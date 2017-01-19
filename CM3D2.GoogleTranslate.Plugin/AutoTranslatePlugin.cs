@@ -4,6 +4,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Reflection;
 using System.Runtime.InteropServices;
+using System.Text;
 using CM3D2.Translation;
 using CM3D2.Translation.Plugin;
 using UnityEngine;
@@ -14,7 +15,7 @@ namespace CM3D2.AutoTranslate.Plugin
 {
 	
 	[PluginName(PLUGIN_NAME)]
-	[PluginVersion("1.0")]
+	[PluginVersion("1.0.1")]
 	public class AutoTranslatePlugin : PluginBase
 	{
 		private const string PLUGIN_NAME = "AutoTranslate";
@@ -67,14 +68,22 @@ namespace CM3D2.AutoTranslate.Plugin
 		private static string ExtractTranslationFromGoogleString(string input)
 		{
 			var first = input.IndexOf('"')+1;
-			var last = first;
-			for (; last < input.Length; ++last)
+			var builder = new StringBuilder(input.Length);
+
+			for (var i = first; i < input.Length; ++i)
 			{
-				if (input[last] == '"' && input[last - 1] != '\\')
+				if (input[i] == '\\')
+				{
+					// skip this and next token
+					i++;
+					continue;
+				}
+				if (input[i] == '"' && input[i - 1] != '\\')
 					break;
+				builder.Append(input[i]);
 			}
-			var translation = input.Substring(first, last - first);
-			return translation.Replace("\\", "");
+				
+			return builder.ToString();
 		}
 
 		public static T ChangeType<T>(object obj)
