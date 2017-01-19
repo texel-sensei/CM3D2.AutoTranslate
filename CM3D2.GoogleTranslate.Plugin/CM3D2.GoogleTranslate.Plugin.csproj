@@ -7,8 +7,8 @@
     <ProjectGuid>{CE77A1AD-4804-467E-8CD0-E31D1D68DDE6}</ProjectGuid>
     <OutputType>Library</OutputType>
     <AppDesignerFolder>Properties</AppDesignerFolder>
-    <RootNamespace>CM3D2.GoogleTranslate.Plugin</RootNamespace>
-    <AssemblyName>CM3D2.GoogleTranslate.Plugin</AssemblyName>
+    <RootNamespace>CM3D2.AutoTranslate.Plugin</RootNamespace>
+    <AssemblyName>CM3D2.AutoTranslate.Plugin</AssemblyName>
     <TargetFrameworkVersion>v4.0</TargetFrameworkVersion>
     <FileAlignment>512</FileAlignment>
     <TargetFrameworkProfile />
@@ -33,6 +33,7 @@
   <ItemGroup>
     <Compile Include="AutoTranslatePlugin.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
+    <Compile Include="SimpleJSON.cs" />
   </ItemGroup>
   <ItemGroup>
     <Reference Include="Assembly-CSharp">

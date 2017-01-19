@@ -10,6 +10,7 @@ using CM3D2.Translation.Plugin;
 using UnityEngine;
 using UnityInjector;
 using UnityInjector.Attributes;
+using SimpleJSON;
 
 namespace CM3D2.AutoTranslate.Plugin
 {
@@ -67,20 +68,30 @@ namespace CM3D2.AutoTranslate.Plugin
 
 		private static string ExtractTranslationFromGoogleString(string input)
 		{
-			var first = input.IndexOf('"')+1;
-			var builder = new StringBuilder(input.Length);
-
-			for (var i = first; i < input.Length; ++i)
+			var data = JSON.Parse(input);
+			var lineBuilder = new StringBuilder(input.Length);
+			foreach (JSONNode entry in data.AsArray[0].AsArray)
 			{
-				if (input[i] == '\\')
+				var token = entry.AsArray[0].ToString();
+
+				if (lineBuilder.Length != 0) lineBuilder.Append(" ");
+				lineBuilder.Append(token.Substring(1, token.Length - 2));
+			}
+
+			var text = lineBuilder.ToString();
+			var builder = new StringBuilder(text.Length);
+			for (var i = 0; i < text.Length; ++i)
+			{
+				if (text[i] == '\\')
 				{
 					// skip this and next token
-					i++;
+					if(text[i+1] != '"')
+						i++;
 					continue;
 				}
-				if (input[i] == '"' && input[i - 1] != '\\')
+				if (text[i] == '"' && text[i - 1] != '\\')
 					break;
-				builder.Append(input[i]);
+				builder.Append(text[i]);
 			}
 				
 			return builder.ToString();
