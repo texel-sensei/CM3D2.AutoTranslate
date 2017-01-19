@@ -1,16 +1,17 @@
-<?xml version="1.0" encoding="utf-8"?>
+﻿<?xml version="1.0" encoding="utf-8"?>
 <Project ToolsVersion="14.0" DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <Import Project="$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props" Condition="Exists('$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props')" />
   <PropertyGroup>
     <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
     <Platform Condition=" '$(Platform)' == '' ">AnyCPU</Platform>
-    <ProjectGuid>ce77a1ad-4804-467e-8cd0-e31d1d68dde6</ProjectGuid>
+    <ProjectGuid>{CE77A1AD-4804-467E-8CD0-E31D1D68DDE6}</ProjectGuid>
     <OutputType>Library</OutputType>
     <AppDesignerFolder>Properties</AppDesignerFolder>
     <RootNamespace>CM3D2.GoogleTranslate.Plugin</RootNamespace>
     <AssemblyName>CM3D2.GoogleTranslate.Plugin</AssemblyName>
-    <TargetFrameworkVersion>v4.5.2</TargetFrameworkVersion>
+    <TargetFrameworkVersion>v4.0</TargetFrameworkVersion>
     <FileAlignment>512</FileAlignment>
+    <TargetFrameworkProfile />
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
     <DebugSymbols>true</DebugSymbols>
@@ -30,24 +31,29 @@
     <WarningLevel>4</WarningLevel>
   </PropertyGroup>
   <ItemGroup>
-    <Reference Include="System"/>
-    
-    <Reference Include="System.Core"/>
-    <Reference Include="System.Xml.Linq"/>
-    <Reference Include="System.Data.DataSetExtensions"/>
-    
-    
-    <Reference Include="Microsoft.CSharp"/>
-    
-    <Reference Include="System.Data"/>
-    
-    <Reference Include="System.Net.Http"/>
-    
-    <Reference Include="System.Xml"/>
+    <Compile Include="AutoTranslatePlugin.cs" />
+    <Compile Include="Properties\AssemblyInfo.cs" />
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="Class1.cs" />
-    <Compile Include="Properties\AssemblyInfo.cs" />
+    <Reference Include="Assembly-CSharp">
+      <HintPath>..\..\..\..\..\..\misc\tmp\Custom Maid 3D2\Game\CM3D2\CM3D2VRx64_Data\Managed\Assembly-CSharp.dll</HintPath>
+    </Reference>
+    <Reference Include="CM3D2.Translation">
+      <HintPath>..\..\..\..\..\..\misc\tmp\Custom Maid 3D2\Game\CM3D2\CM3D2VRx64_Data\Managed\CM3D2.Translation.dll</HintPath>
+    </Reference>
+    <Reference Include="CM3D2.Translation.Plugin">
+      <HintPath>..\..\..\..\..\..\misc\tmp\Custom Maid 3D2\Game\CM3D2\UnityInjector\CM3D2.Translation.Plugin.dll</HintPath>
+    </Reference>
+    <Reference Include="ExIni">
+      <HintPath>..\..\..\..\..\..\misc\tmp\Custom Maid 3D2\Game\CM3D2\CM3D2VRx64_Data\Managed\ExIni.dll</HintPath>
+    </Reference>
+    <Reference Include="System" />
+    <Reference Include="UnityEngine">
+      <HintPath>..\..\..\..\..\..\misc\tmp\Custom Maid 3D2\Game\CM3D2\CM3D2VRx64_Data\Managed\UnityEngine.dll</HintPath>
+    </Reference>
+    <Reference Include="UnityInjector">
+      <HintPath>..\..\..\..\..\..\misc\tmp\Custom Maid 3D2\Game\CM3D2\CM3D2VRx64_Data\Managed\UnityInjector.dll</HintPath>
+    </Reference>
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 
@@ -57,5 +63,4 @@
   <Target Name="AfterBuild">
   </Target>
   -->
-
- </Project>
+</Project>
