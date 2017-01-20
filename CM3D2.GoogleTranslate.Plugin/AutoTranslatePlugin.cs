@@ -22,7 +22,8 @@ namespace CM3D2.AutoTranslate.Plugin
 		enum TranslatorID
 		{
 			Google,
-			Executable
+			Executable,
+			GenericServer
 		};
 
 		public string DataPathStrings => Path.Combine(this.DataPath, "Strings");
@@ -99,6 +100,9 @@ namespace CM3D2.AutoTranslate.Plugin
 					break;
 				case TranslatorID.Executable:
 					Translator = new ExeTranslatorModule();
+					break;
+				case TranslatorID.GenericServer:
+					Translator = new GenericServerTranslationModule();
 					break;
 				default:
 					CoreUtil.LogError("Translator not implemented!");
