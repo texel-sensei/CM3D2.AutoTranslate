@@ -15,112 +15,77 @@ using SimpleJSON;
 namespace CM3D2.AutoTranslate.Plugin
 {
 	
-	[PluginName(PLUGIN_NAME)]
+	[PluginName(CoreUtil.PLUGIN_NAME)]
 	[PluginVersion("1.0.1")]
 	public class AutoTranslatePlugin : PluginBase
 	{
-		private const string PLUGIN_NAME = "AutoTranslate";
-
-		private string _translationFile = "google_translated.txt";
-		private string _translationFolder = "Translation";
-		private string _targetLanguage = "en";
-		private int _verbosity = 0;
-		private bool _dumpCache = true;
-
-		private readonly Dictionary<string, string> _translationCache = new Dictionary<string, string>();
-		private Dictionary<string, string> _alreadyInFile;
+		enum TranslatorID
+		{
+			Google
+		};
 
 		public string DataPathStrings => Path.Combine(this.DataPath, "Strings");
 		public string TranslationFilePath => Path.Combine(Path.Combine(DataPathStrings, _translationFolder), _translationFile);
 
-		private void Log(string msg, int level)
-		{
-			if(level < _verbosity)
-			{
-				Debug.Log($"{PLUGIN_NAME}: {msg}");
-			}
-		}
 
-		private void LogError(string msg)
-		{
-			Debug.LogError($"{PLUGIN_NAME}: {msg}");
-		}
+		private string _translationFile = "google_translated.txt";
+		private string _translationFolder = "Translation";
+		private bool _dumpCache = true;
+		private bool _pluginActive = true;
+		private TranslatorID _activeTranslator;
 
+		private readonly Dictionary<string, string> _translationCache = new Dictionary<string, string>();
+		private Dictionary<string, string> _alreadyInFile;
+	
+		internal TranslationModule Translator { get; set; }
+	
 		public void Awake()
 		{
 			DontDestroyOnLoad(this);
-			Log("Starting Plugin", 0);
+			CoreUtil.Log("Starting Plugin", 0);
 			LoadConfig();
-			Log($"Using translation cache file @: {TranslationFilePath}", 1);
+			if (!_pluginActive)
+			{
+				CoreUtil.Log("Plugin is disabled.", 0);
+				Destroy(this);
+				return;
+			}
+			var success = LoadTranslator();
+			if (!success)
+			{
+				CoreUtil.LogError($"Failed to load Translation module {_activeTranslator}");
+				Destroy(this);
+				return;
+			}
+
+			Translator.LoadConfig();
+
+			CoreUtil.Log($"Using translation cache file @: {TranslationFilePath}", 1);
 			StartCoroutine(HookTranslator());
 			LoadCacheFromDisk();
 			_alreadyInFile = new Dictionary<string, string>(_translationCache);
 		}
 
+		private bool LoadTranslator()
+		{
+			switch (_activeTranslator)
+			{
+				case TranslatorID.Google:
+					Translator = new GoogleTranslationModule();
+					break;
+				default:
+					CoreUtil.LogError("Translator not implemented!");
+					return false;
+			}
+			return Translator.Init();
+		}
+
 		private IEnumerator HookTranslator()
 		{
-			Log("Waiting for hook...",2);
+			CoreUtil.Log("Waiting for hook...",2);
 			yield return new WaitForEndOfFrame();
 			Core.TranslateText += TextStreamHandleText;
-			Log("Hooked!",2);
-			
-		}
-
-		private static string ExtractTranslationFromGoogleString(string input)
-		{
-			var data = JSON.Parse(input);
-			var lineBuilder = new StringBuilder(input.Length);
-			foreach (JSONNode entry in data.AsArray[0].AsArray)
-			{
-				var token = entry.AsArray[0].ToString();
-
-				if (lineBuilder.Length != 0) lineBuilder.Append(" ");
-				lineBuilder.Append(token.Substring(1, token.Length - 2));
-			}
-
-			var text = lineBuilder.ToString();
-			var builder = new StringBuilder(text.Length);
-			for (var i = 0; i < text.Length; ++i)
-			{
-				if (text[i] == '\\')
-				{
-					// skip this and next token
-					if(text[i+1] != '"')
-						i++;
-					continue;
-				}
-				if (text[i] == '"' && text[i - 1] != '\\')
-					break;
-				builder.Append(text[i]);
-			}
-				
-			return builder.ToString();
-		}
-
-		public static T ChangeType<T>(object obj)
-		{
-			return (T) Convert.ChangeType(obj, typeof(T));
-		}
-
-		private bool LoadValue<T>(string key1, string key2, ref T val)
-		{
-			var entry = Preferences[key1][key2];
-			var needSave = false;
-			if (string.IsNullOrEmpty(entry.Value))
-			{
-				entry.Value = val.ToString();
-				needSave = true;
-			}
-			try
-			{
-				val = ChangeType<T>(entry.Value);
-			}
-			catch (Exception)
-			{
-				return true;
-			}
-			
-			return needSave;
+			CoreUtil.Log("Hooked!",2);	
 		}
 
 		private void SaveCacheToDisk()
@@ -151,14 +116,20 @@ namespace CM3D2.AutoTranslate.Plugin
 
 		private void LoadConfig()
 		{
-			var needSave = false;
-			needSave |= LoadValue("Cache", "File",  ref _translationFile);
-			needSave |= LoadValue("Cache", "Folder", ref _translationFolder);
-			needSave |= LoadValue("Cache", "WriteCacheToFile", ref _dumpCache);
-			needSave |= LoadValue("Translation", "TargetLanguage", ref _targetLanguage);
-			needSave |= LoadValue("Debug", "VerbosityLevel", ref _verbosity);
+			CoreUtil.StartLoadingConfig(Preferences);
 
-			if (needSave)
+			var general = CoreUtil.LoadSection("General");
+			general.LoadValue("PluginActive", ref _pluginActive);
+			general.LoadValue("TranslationMethod", ref _activeTranslator);
+
+			var cache = CoreUtil.LoadSection("Cache");
+			cache.LoadValue("File", ref _translationFile);
+			cache.LoadValue("Folder", ref _translationFolder);
+			cache.LoadValue("WriteCacheToFile", ref _dumpCache);
+
+			
+
+			if (CoreUtil.FinishLoadingConfig())
 			{
 				SaveConfig();
 			}
@@ -175,83 +146,6 @@ namespace CM3D2.AutoTranslate.Plugin
 			return num / (float) str.Length;
 		}
 
-		private class TranslationData
-		{
-			public string Text { get; set; }
-			public string Translation { get; set; }
-			public bool Success { get; set; }
-		}
-
-		/// <summary>
-		/// Translates a string into another language using Google's translate API JSON calls.
-		/// <seealso>Class TranslationServices</seealso>
-		/// </summary>
-		/// <param name="Text">Text to translate. Should be a single word or sentence.</param>
-		/// <param name="FromCulture">
-		/// Two letter culture (en of en-us, fr of fr-ca, de of de-ch)
-		/// </param>
-		/// <param name="ToCulture">
-		/// Two letter culture (as for FromCulture)
-		/// </param>
-		/// <param name="translation">
-		/// The resulting translation or null on error
-		/// </param>
-		private IEnumerator TranslateGoogle(string text, string fromCulture, string toCulture, TranslationData translation)
-		{
-			fromCulture = fromCulture.ToLower();
-			toCulture = toCulture.ToLower();
-
-			translation.Text = text;
-			translation.Success = false;
-
-			// normalize the culture in case something like en-us was passed 
-			// retrieve only en since Google doesn't support sub-locales
-			string[] tokens = fromCulture.Split('-');
-			if (tokens.Length > 1)
-				fromCulture = tokens[0];
-
-			// normalize ToCulture
-			tokens = toCulture.Split('-');
-			if (tokens.Length > 1)
-				toCulture = tokens[0];
-
-			//string url =
-			//	$@"http://translate.google.com/translate_a/t?client=j&text={WWW.EscapeURL(text)}&hl=en&sl={fromCulture}&tl={toCulture}";
-
-			string url = $@"https://translate.googleapis.com/translate_a/single?client=gtx&sl={fromCulture}&tl={toCulture}&dt=t&q={WWW.EscapeURL(text)}";
-
-			// Retrieve Translation with HTTP GET call
-			string html = null;
-
-			var headers = new Dictionary<string, string> {{"User-Agent", "Mozilla/5.0"}, {"Accept-Charset", "UTF-8"} };
-			var www = new WWW(url, null, headers);
-			yield return www;
-			
-				
-			if (www.error != null)
-			{
-				LogError(www.error);
-				yield break;
-			}
-			Log(www.text, 5);
-
-			html = www.text;
-
-			// First string in json is the translation
-			var result = ExtractTranslationFromGoogleString(html);
-
-			result = result.Replace("\\n", "");
-
-			//return WebUtils.DecodeJsString(result);
-
-			// Result is a JavaScript string so we need to deserialize it properly
-			//JavaScriptSerializer ser = new JavaScriptSerializer();
-			//return ser.Deserialize(result, typeof(string)) as string;
-			Log($"Got Translation from google: {result}", 3);
-
-			translation.Translation = result;
-			translation.Success = true;
-		}
 
 		private string TextStreamHandleText(object sender, StringTranslationEventArgs e)
 		{
@@ -263,7 +157,7 @@ namespace CM3D2.AutoTranslate.Plugin
 
 			var translationPlugin = (TranslationPlugin) FindObjectOfType(translationPluginClass);
 			if (translationPlugin == null)
-				LogError("Couldn't find translation plugin");
+				CoreUtil.LogError("Couldn't find translation plugin");
 
 			var str =
 				(string)
@@ -274,15 +168,15 @@ namespace CM3D2.AutoTranslate.Plugin
 						e
 					});
 
-			Log("Translation Stream: " + str, 4);
+			CoreUtil.Log("Translation Stream: " + str, 4);
 			if (str != null)
 				return str;
 
-			Log("\tFound no translation for: " + e.Text, 4);
+			CoreUtil.Log("\tFound no translation for: " + e.Text, 4);
 
 			if (get_ascii_percentage(e.Text) > 0.8)
 			{
-				Log("\tis ascii, skipping.",4);
+				CoreUtil.Log("\tis ascii, skipping.",4);
 				return e.Text;
 			}
 
@@ -290,7 +184,7 @@ namespace CM3D2.AutoTranslate.Plugin
 			string translation;
 			if (_translationCache.TryGetValue(e.Text, out translation))
 			{
-				Log("\tgot translation from cache", 4);
+				CoreUtil.Log("\tgot translation from cache", 4);
 				return translation;
 			}
 			StartCoroutine(DoTranslation(lab, e.Text));
@@ -298,26 +192,28 @@ namespace CM3D2.AutoTranslate.Plugin
 		}
 
 		private int _translationId = 0;
+
 		private IEnumerator DoTranslation(UILabel lab, string eText)
 		{
 			
 			var result = new TranslationData();
+			result.Text = eText;
 			var id = _translationId++;
-			Log($"Starting translation {id}!",3);
-			yield return StartCoroutine(TranslateGoogle(eText, "ja", _targetLanguage, result));
-			Log($"Finished Translation {id}!",3);
+			CoreUtil.Log($"Starting translation {id}!",3);
+			yield return StartCoroutine(Translator.Translate(result));
+			CoreUtil.Log($"Finished Translation {id}!",3);
 
 			CacheTranslation(result);
 
 			if (!lab.isVisible)
 			{
-				Log($"Label {lab} no longer visible ({id})!",3);
+				CoreUtil.Log($"Label {lab} no longer visible ({id})!",3);
 				yield break;
 			}		
 
 			if (!result.Success)
 			{
-				Log($"Failed translation #{id} ({result.Text})!", 2);
+				CoreUtil.Log($"Failed translation #{id} ({result.Text})!", 2);
 				yield break;
 			}
 			
@@ -335,8 +231,9 @@ namespace CM3D2.AutoTranslate.Plugin
 
 		public void OnApplicationQuit()
 		{
-			if (_dumpCache) { 
-				Log("Saving Cache...",1);
+			Translator.DeInit();
+			if (_dumpCache) {
+				CoreUtil.Log("Saving Cache...",1);
 				SaveCacheToDisk();
 			}
 		}

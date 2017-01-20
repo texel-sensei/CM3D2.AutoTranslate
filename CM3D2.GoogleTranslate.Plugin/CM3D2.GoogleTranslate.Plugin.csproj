@@ -32,8 +32,11 @@
   </PropertyGroup>
   <ItemGroup>
     <Compile Include="AutoTranslatePlugin.cs" />
+    <Compile Include="CoreUtil.cs" />
+    <Compile Include="GoogleTranslationModule.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="SimpleJSON.cs" />
+    <Compile Include="TranslationModule.cs" />
   </ItemGroup>
   <ItemGroup>
     <Reference Include="Assembly-CSharp">
