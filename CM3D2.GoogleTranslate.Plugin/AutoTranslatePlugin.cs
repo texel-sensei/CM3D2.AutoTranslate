@@ -21,7 +21,8 @@ namespace CM3D2.AutoTranslate.Plugin
 	{
 		enum TranslatorID
 		{
-			Google
+			Google,
+			Executable
 		};
 
 		public string DataPathStrings => Path.Combine(this.DataPath, "Strings");
@@ -47,10 +48,34 @@ namespace CM3D2.AutoTranslate.Plugin
 			if (!_pluginActive)
 			{
 				CoreUtil.Log("Plugin is disabled.", 0);
+				if (CoreUtil.FinishLoadingConfig())
+				{
+					SaveConfig();
+				}
 				Destroy(this);
 				return;
 			}
+
 			var success = LoadTranslator();
+			if (!success)
+			{
+				CoreUtil.LogError($"Failed to load Translation module '{_activeTranslator}'");
+				if (CoreUtil.FinishLoadingConfig())
+				{
+					SaveConfig();
+				}
+				Destroy(this);
+				return;
+			}
+
+			Translator.LoadConfig();
+			if (CoreUtil.FinishLoadingConfig())
+			{
+				SaveConfig();
+			}
+
+			CoreUtil.Log($"Initializing Module {_activeTranslator}", 1);
+			success = Translator.Init();
 			if (!success)
 			{
 				CoreUtil.LogError($"Failed to load Translation module {_activeTranslator}");
@@ -58,7 +83,6 @@ namespace CM3D2.AutoTranslate.Plugin
 				return;
 			}
 
-			Translator.LoadConfig();
 
 			CoreUtil.Log($"Using translation cache file @: {TranslationFilePath}", 1);
 			StartCoroutine(HookTranslator());
@@ -73,11 +97,14 @@ namespace CM3D2.AutoTranslate.Plugin
 				case TranslatorID.Google:
 					Translator = new GoogleTranslationModule();
 					break;
+				case TranslatorID.Executable:
+					Translator = new ExeTranslatorModule();
+					break;
 				default:
 					CoreUtil.LogError("Translator not implemented!");
 					return false;
 			}
-			return Translator.Init();
+			return true;
 		}
 
 		private IEnumerator HookTranslator()
@@ -126,13 +153,6 @@ namespace CM3D2.AutoTranslate.Plugin
 			cache.LoadValue("File", ref _translationFile);
 			cache.LoadValue("Folder", ref _translationFolder);
 			cache.LoadValue("WriteCacheToFile", ref _dumpCache);
-
-			
-
-			if (CoreUtil.FinishLoadingConfig())
-			{
-				SaveConfig();
-			}
 		}
 
 		private static float get_ascii_percentage(string str)

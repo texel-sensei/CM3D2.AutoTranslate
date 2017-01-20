@@ -33,6 +33,7 @@
   <ItemGroup>
     <Compile Include="AutoTranslatePlugin.cs" />
     <Compile Include="CoreUtil.cs" />
+    <Compile Include="ExeTranslatorModule.cs" />
     <Compile Include="GoogleTranslationModule.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="SimpleJSON.cs" />

@@ -93,7 +93,7 @@ namespace CM3D2.AutoTranslate.Plugin
 
 				var entry = _preferences[_section][key];
 				Log($"Loading config value '{_section}'/'{key}' with default '{val}', got: '{entry.Value}'", 7);
-				if (string.IsNullOrEmpty(entry.Value))
+				if (entry.Value == null || entry.Value.Trim() == "")
 				{
 					entry.Value = val.ToString();
 					_needSaveConfig = true;
