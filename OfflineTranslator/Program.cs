@@ -2,25 +2,51 @@ using System;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
+using System.Net;
+using System.Net.Sockets;
+using Newtonsoft.Json;
+using Newtonsoft.Json.Serialization;
 
 namespace OfflineTranslator
 {
 	internal class Program
 	{
-		private static void Log(string msg)
+		public static void Log(object msg)
 		{
 			Debug.WriteLine(msg);
 			Console.WriteLine(msg);
-			File.AppendAllText(@"T:\log.txt", msg + "\n");
 		}
 
 		private static void Main(string[] args)
 		{
-			File.Delete(@"T:\log.txt");
-			Log("Hello World!");
-			foreach (var arg in args)
+			var server = new TcpListener(IPAddress.Any, 9586);
+			server.Start();
+
+			Log("starting listening!");
+
+			while (true)
 			{
-				Log(arg);
+				try
+				{
+					var client = server.AcceptTcpClient();
+					var stream = client.GetStream();
+
+					Log("Someone connected!");
+					while (client.Connected)
+					{
+						var pack = TranslationProtocoll.ReadPacket(stream);
+						Log($"Got packet #{pack.id} and text {pack.text}");
+						pack.method = TranslationProtocoll.PacketMethod.translation;
+						pack.translation = "Cool Translation: " + pack.text;
+						pack.success = true;
+						TranslationProtocoll.SendPacket(pack, stream);
+
+					}
+				}
+				catch(Exception e)
+				{
+					Log(e.Message);
+				}
 			}
 		}
 	}

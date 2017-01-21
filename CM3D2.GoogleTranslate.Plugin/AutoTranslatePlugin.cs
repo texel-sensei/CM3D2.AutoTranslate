@@ -109,6 +109,7 @@ namespace CM3D2.AutoTranslate.Plugin
 					CoreUtil.LogError("Translator not implemented!");
 					return false;
 			}
+			Translator._plugin = this;
 			return true;
 		}
 

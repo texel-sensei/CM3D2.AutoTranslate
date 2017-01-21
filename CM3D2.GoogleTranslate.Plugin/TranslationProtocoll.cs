@@ -4,9 +4,7 @@ using System.Collections.Generic;
 using System.ComponentModel;
 using System.IO;
 using System.Linq;
-using System.Security.Cryptography;
 using System.Text;
-using SimpleJSON;
 using UnityEngine;
 
 
@@ -16,15 +14,6 @@ namespace CM3D2.AutoTranslate.Plugin
 
 	internal static class TranslationProtocoll
 	{
-		public const string KEY_METHOD = "method";
-		public const string KEY_ID = "id";
-		public const string KEY_TEXT = "text";
-		public const string KEY_TRANSLATION = "translation";
-		private const string KEY_SUCCESS = "success";
-
-		public const string METHOD_TRANSLATE = "translate";
-		public const string METHOD_TRANSLATION = "translation";
-
 		public enum PacketMethod
 		{
 			translate,
@@ -47,8 +36,28 @@ namespace CM3D2.AutoTranslate.Plugin
 			public bool? success = null;
 		}
 
+		public static bool ParsePacketForTranslation(Packet p, TranslationData d)
+		{
+			if (p.method != PacketMethod.translation)
+			{
+				return false;
+			}
+
+			d.Success = p.success ?? false;
+			if (!d.Success)
+				return true;
+			d.Translation = p.translation ?? "";
+			if (d.Translation == "")
+			{
+				d.Success = false;
+				return false;
+			}
+			return true;
+		}
+
 		public static void SendTranslationRequest(TranslationData data, BufferedStream outStream)
 		{
+			CoreUtil.Log($"Sending packet {data.Id}", 0);
 			var pack = new Packet
 			{
 				method = PacketMethod.translate,
@@ -58,7 +67,7 @@ namespace CM3D2.AutoTranslate.Plugin
 
 			var str = JsonFx.Json.JsonWriter.Serialize(pack);
 			var bytes = Encoding.ASCII.GetBytes(str);
-			outStream.BeginWrite(bytes, 0, bytes.Length, outStream.EndWrite, null);
+			outStream.Write(bytes, 0, bytes.Length);
 		}
 
 		public class WaitForRead : CustomYieldInstruction
@@ -71,6 +80,7 @@ namespace CM3D2.AutoTranslate.Plugin
 			{
 				_stream = stream;
 				CoreUtil.Log("Begin reading", 0);
+				/*
 				stream.BeginRead(buffer, offset, size, ar =>
 				{
 					CoreUtil.Log("somethingsomething", 0);
@@ -78,6 +88,9 @@ namespace CM3D2.AutoTranslate.Plugin
 					_finished = true;
 				}, this);
 				CoreUtil.Log("after begin read", 0);
+				*/
+				_bytesRead = _stream.Read(buffer, offset, size);
+				_finished = true;
 			}
 
 			public int GetReadBytes => _bytesRead;
@@ -92,62 +105,35 @@ namespace CM3D2.AutoTranslate.Plugin
 			public bool ready = false;
 		}
 
-		private class Buffer
-		{
-			public byte[] buffer = new byte[1024];
-			public int size = 0;
-
-			public void drop(int num)
-			{
-				if (num >= size)
-				{
-					size = 0;
-					return;
-				}
-				Array.Copy(buffer, num, buffer, 0, size-num);
-				size -= num;
-			}
-
-			public void set(byte[] data, int offset, int length)
-			{
-				Array.Copy(data, offset, buffer,0, length);
-				size = length;
-			}
-		}
-
-		private static Dictionary<Stream, Buffer> _buffers = new Dictionary<Stream, Buffer>();
+		private static readonly byte[] _buffer = new byte[4096];
+		private static int offset = 0;
+		private static int size = 0;
 		public static IEnumerator ReadJsonObject(BufferedStream inStream, OutString output)
 		{
-			if (!_buffers.ContainsKey(inStream))
-			{
-				_buffers.Add(inStream, new Buffer());
-			}
-
-			var bytebuffer = _buffers[inStream];
-			var buffer = new byte[256];
+			
 			var builder = new StringBuilder();
 			var stackDepth = 0;
+			var foundStart = false;
 			do
 			{
-				var read = bytebuffer.size;
-
-				if (read == 0)
+				if (size == 0)
 				{
-					var wait = new WaitForRead(inStream, buffer, 0, buffer.Length);
+					var wait = new WaitForRead(inStream, _buffer, 0, _buffer.Length);
 					CoreUtil.Log("Waiting for data...", 0);
 					yield return wait;
-					read = wait.GetReadBytes;
-					CoreUtil.Log($"Got {read} bytes", 0);
-					bytebuffer.set(buffer, 0, buffer.Length);
+					size = wait.GetReadBytes;
+					offset = 0;
+					CoreUtil.Log($"Got {size} bytes", 0);
 				}
 
-				var str = Encoding.ASCII.GetString(buffer.Take(read).ToArray());
-				var wrote = 0;
-				foreach (var c in str)
+				for(; offset <size;++offset)
 				{
+					var c = (char) _buffer[offset];
+
 					switch (c)
 					{
 						case '{':
+							foundStart = true;
 							stackDepth++;
 							break;
 						case '}':
@@ -155,15 +141,12 @@ namespace CM3D2.AutoTranslate.Plugin
 							break;
 					}
 					builder.Append(c);
-					wrote++;
+					if (foundStart && stackDepth == 0)
+						break;
 				}
-
-				if (read != wrote)
-				{
-					bytebuffer.drop(wrote);
-				}
-			} while (stackDepth > 0);
+			} while (!foundStart && stackDepth > 0);
 			output.data = builder.ToString();
+			CoreUtil.Log(output.data, 2);
 			output.ready = true;
 		}
 
