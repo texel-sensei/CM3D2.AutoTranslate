@@ -27,7 +27,8 @@ namespace CM3D2.AutoTranslate.Plugin
 		};
 
 		public string DataPathStrings => Path.Combine(this.DataPath, "Strings");
-		public string TranslationFilePath => Path.Combine(Path.Combine(DataPathStrings, _translationFolder), _translationFile);
+		public string TranslationFolder => Path.Combine(DataPathStrings, _translationFolder);
+		public string TranslationFilePath => Path.Combine(TranslationFolder, _translationFile);
 
 
 		private string _translationFile = "google_translated.txt";
@@ -129,6 +130,18 @@ namespace CM3D2.AutoTranslate.Plugin
 
 		private void LoadCacheFromDisk()
 		{
+
+			if (!Directory.Exists(TranslationFolder))
+			{
+				CoreUtil.Log($"Folder {TranslationFolder} does not exist, creating it.", 2);
+				Directory.CreateDirectory(TranslationFolder);
+			}
+			if (!File.Exists(TranslationFilePath))
+			{
+				CoreUtil.Log($"Cache file {TranslationFilePath} does not exist, creating it.", 2);
+				File.Create(TranslationFilePath);
+				return;
+			}
 			foreach (var line in File.ReadAllLines(TranslationFilePath))
 			{
 				var parts = line.Split('\t');
