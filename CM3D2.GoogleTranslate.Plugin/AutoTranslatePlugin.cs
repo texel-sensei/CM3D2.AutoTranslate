@@ -236,6 +236,7 @@ namespace CM3D2.AutoTranslate.Plugin
 			var result = new TranslationData();
 			result.Text = eText;
 			var id = _translationId++;
+			result.Id = id;
 			CoreUtil.Log($"Starting translation {id}!",3);
 			yield return StartCoroutine(Translator.Translate(result));
 			CoreUtil.Log($"Finished Translation {id}!",3);

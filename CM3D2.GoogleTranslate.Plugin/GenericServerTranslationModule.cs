@@ -41,15 +41,20 @@ namespace CM3D2.AutoTranslate.Plugin
 
 		public override IEnumerator Translate(TranslationData data)
 		{
-			CoreUtil.Log("Sending Request", 9);
 			TranslationProtocoll.SendTranslationRequest(data, _stream);
-			CoreUtil.Log("Sent Request", 9);
-			var output = new TranslationProtocoll.OutString();
+			var pack = new TranslationProtocoll.Packet();
 
-			yield return TranslationProtocoll.ReadJsonObject(_stream, output);
-			CoreUtil.Log(output.data, 2);
-			var pack = JsonFx.Json.JsonReader.Deserialize<TranslationProtocoll.Packet>(output.data);
-			CoreUtil.Log(pack.ToString(), 2);
+			yield return TranslationProtocoll.ReadPacket(_stream, pack);
+
+			CoreUtil.Log($"Got data! Packet #{pack.id}", 0);
+			if (pack.id != data.Id)
+			{
+				CoreUtil.LogError($"Packet swap detected! {pack.id} <-> {data.Id}");
+			}
+			CoreUtil.Log(pack.text, 0);
+			data.Success = pack.success ?? false;
+			data.Translation = pack.translation ?? "";
+			if (data.Translation == "") data.Success = false;
 		}
 
 		public override void DeInit()

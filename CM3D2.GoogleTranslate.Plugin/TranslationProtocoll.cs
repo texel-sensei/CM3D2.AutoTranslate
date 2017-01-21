@@ -167,39 +167,20 @@ namespace CM3D2.AutoTranslate.Plugin
 			output.ready = true;
 		}
 
-		public static bool TryDecodeTranslationResponse(JSONNode json, TranslationData output)
+		public static IEnumerator ReadPacket(BufferedStream str, Packet pack)
 		{
-			output.Success = false;
+			var output = new OutString();
+			yield return ReadJsonObject(str, output);
 
-			var method = json[KEY_TRANSLATION].Value;
-			if (method != METHOD_TRANSLATION)
-			{
-				return false;
-			}
-
-			var success = json[KEY_SUCCESS].AsBool;
-			if (!success)
-			{
-				return false;
-			}
-
-			var id = json[KEY_ID].AsInt;
-			if (id == 0)
-			{
-				return false;
-			}
-
-			var translation = json[KEY_TRANSLATION].Value;
-			if (string.IsNullOrEmpty(translation))
-			{
-				return false;
-			}
-
-			output.Translation = translation;
-			output.Id = id;
-			output.Success = true;
-
-			return true;
+			var mypack = JsonFx.Json.JsonReader.Deserialize<Packet>(output.data);
+			pack.id = mypack.id;
+			pack.method = mypack.method;
+			if(mypack.translation != null)			
+				pack.translation = Uri.UnescapeDataString(mypack.translation);
+			if(mypack.text != null)
+				pack.text = Uri.UnescapeDataString(mypack.text);
+			pack.success = mypack.success;
 		}
+
 	}
 }
