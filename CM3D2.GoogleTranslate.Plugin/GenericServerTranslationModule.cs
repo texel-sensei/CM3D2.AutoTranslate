@@ -16,7 +16,7 @@ namespace CM3D2.AutoTranslate.Plugin
 		private int _port = 9586;
 
 		private TcpClient _connection;
-		private StreamWriter _stream;
+		private BufferedStream _stream;
 
 		protected override void LoadConfig(CoreUtil.SectionLoader section)
 		{
@@ -29,7 +29,7 @@ namespace CM3D2.AutoTranslate.Plugin
 			try
 			{
 				_connection = new TcpClient(_host, _port);
-				_stream = new StreamWriter(_connection.GetStream());
+				_stream = new BufferedStream(_connection.GetStream());
 			}
 			catch (Exception e)
 			{
@@ -41,13 +41,19 @@ namespace CM3D2.AutoTranslate.Plugin
 
 		public override IEnumerator Translate(TranslationData data)
 		{
-			_stream.WriteLine(data.Text);
-			yield break;
+			CoreUtil.Log("Sending Request", 9);
+			TranslationProtocoll.SendTranslationRequest(data, _stream);
+			CoreUtil.Log("Sent Request", 9);
+			var output = new TranslationProtocoll.OutString();
+
+			yield return TranslationProtocoll.ReadJsonObject(_stream, output);
+			CoreUtil.Log(output.data, 2);
+			var pack = JsonFx.Json.JsonReader.Deserialize<TranslationProtocoll.Packet>(output.data);
+			CoreUtil.Log(pack.ToString(), 2);
 		}
 
 		public override void DeInit()
 		{
-			_stream.Close();
 			_connection.Close();
 		}
 	}

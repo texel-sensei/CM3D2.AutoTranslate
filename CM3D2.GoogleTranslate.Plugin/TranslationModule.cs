@@ -12,6 +12,7 @@ namespace CM3D2.AutoTranslate.Plugin
 		public string Text { get; set; }
 		public string Translation { get; set; }
 		public bool Success { get; set; }
+		public int Id { get; set; }
 	}
 
 	internal abstract class TranslationModule
