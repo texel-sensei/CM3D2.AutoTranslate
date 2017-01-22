@@ -16,7 +16,7 @@ namespace CM3D2.AutoTranslate.Plugin
 {
 	
 	[PluginName(CoreUtil.PLUGIN_NAME)]
-	[PluginVersion("1.0.1")]
+	[PluginVersion("1.0.2")]
 	public class AutoTranslatePlugin : PluginBase
 	{
 		enum TranslatorID
@@ -27,7 +27,8 @@ namespace CM3D2.AutoTranslate.Plugin
 		};
 
 		public string DataPathStrings => Path.Combine(this.DataPath, "Strings");
-		public string TranslationFilePath => Path.Combine(Path.Combine(DataPathStrings, _translationFolder), _translationFile);
+		public string TranslationFolder => Path.Combine(DataPathStrings, _translationFolder);
+		public string TranslationFilePath => Path.Combine(TranslationFolder, _translationFile);
 
 
 		private string _translationFile = "google_translated.txt";
@@ -108,6 +109,7 @@ namespace CM3D2.AutoTranslate.Plugin
 					CoreUtil.LogError("Translator not implemented!");
 					return false;
 			}
+			Translator._plugin = this;
 			return true;
 		}
 
@@ -129,6 +131,18 @@ namespace CM3D2.AutoTranslate.Plugin
 
 		private void LoadCacheFromDisk()
 		{
+
+			if (!Directory.Exists(TranslationFolder))
+			{
+				CoreUtil.Log($"Folder {TranslationFolder} does not exist, creating it.", 2);
+				Directory.CreateDirectory(TranslationFolder);
+			}
+			if (!File.Exists(TranslationFilePath))
+			{
+				CoreUtil.Log($"Cache file {TranslationFilePath} does not exist, creating it.", 2);
+				File.Create(TranslationFilePath);
+				return;
+			}
 			foreach (var line in File.ReadAllLines(TranslationFilePath))
 			{
 				var parts = line.Split('\t');
@@ -177,7 +191,11 @@ namespace CM3D2.AutoTranslate.Plugin
 				return null;
 			var translationPluginClass = typeof(TranslationPlugin);
 
-			
+			if (get_ascii_percentage(e.Text) > 0.8)
+			{
+				CoreUtil.Log("Is ascii, skipping.", 4);
+				return e.Text;
+			}
 
 			var translationPlugin = (TranslationPlugin) FindObjectOfType(translationPluginClass);
 			if (translationPlugin == null)
@@ -198,11 +216,7 @@ namespace CM3D2.AutoTranslate.Plugin
 
 			CoreUtil.Log("\tFound no translation for: " + e.Text, 4);
 
-			if (get_ascii_percentage(e.Text) > 0.8)
-			{
-				CoreUtil.Log("\tis ascii, skipping.",4);
-				return e.Text;
-			}
+			
 
 			var lab = sender as UILabel;
 			string translation;
@@ -223,6 +237,7 @@ namespace CM3D2.AutoTranslate.Plugin
 			var result = new TranslationData();
 			result.Text = eText;
 			var id = _translationId++;
+			result.Id = id;
 			CoreUtil.Log($"Starting translation {id}!",3);
 			yield return StartCoroutine(Translator.Translate(result));
 			CoreUtil.Log($"Finished Translation {id}!",3);
