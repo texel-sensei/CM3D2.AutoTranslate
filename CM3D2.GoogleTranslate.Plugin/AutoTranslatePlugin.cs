@@ -191,7 +191,11 @@ namespace CM3D2.AutoTranslate.Plugin
 				return null;
 			var translationPluginClass = typeof(TranslationPlugin);
 
-			
+			if (get_ascii_percentage(e.Text) > 0.8)
+			{
+				CoreUtil.Log("Is ascii, skipping.", 4);
+				return e.Text;
+			}
 
 			var translationPlugin = (TranslationPlugin) FindObjectOfType(translationPluginClass);
 			if (translationPlugin == null)
@@ -212,11 +216,7 @@ namespace CM3D2.AutoTranslate.Plugin
 
 			CoreUtil.Log("\tFound no translation for: " + e.Text, 4);
 
-			if (get_ascii_percentage(e.Text) > 0.8)
-			{
-				CoreUtil.Log("\tis ascii, skipping.",4);
-				return e.Text;
-			}
+			
 
 			var lab = sender as UILabel;
 			string translation;
