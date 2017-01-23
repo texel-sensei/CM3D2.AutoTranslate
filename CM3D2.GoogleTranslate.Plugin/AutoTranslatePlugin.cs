@@ -19,12 +19,6 @@ namespace CM3D2.AutoTranslate.Plugin
 	[PluginVersion("1.0.2")]
 	public class AutoTranslatePlugin : PluginBase
 	{
-		enum TranslatorID
-		{
-			Google,
-			Executable,
-			GenericServer
-		};
 
 		public string DataPathStrings => Path.Combine(this.DataPath, "Strings");
 		public string TranslationFolder => Path.Combine(DataPathStrings, _translationFolder);
@@ -35,7 +29,7 @@ namespace CM3D2.AutoTranslate.Plugin
 		private string _translationFolder = "Translation";
 		private bool _dumpCache = true;
 		private bool _pluginActive = true;
-		private TranslatorID _activeTranslator;
+		private string _activeTranslator = "Google";
 
 		private readonly Dictionary<string, string> _translationCache = new Dictionary<string, string>();
 		private Dictionary<string, string> _alreadyInFile;
@@ -94,20 +88,10 @@ namespace CM3D2.AutoTranslate.Plugin
 
 		private bool LoadTranslator()
 		{
-			switch (_activeTranslator)
-			{
-				case TranslatorID.Google:
-					Translator = new GoogleTranslationModule();
-					break;
-				case TranslatorID.Executable:
-					Translator = new ExeTranslatorModule();
-					break;
-				case TranslatorID.GenericServer:
-					Translator = new GenericServerTranslationModule();
-					break;
-				default:
-					CoreUtil.LogError("Translator not implemented!");
-					return false;
+			Translator = TranslationModuleFactory.Create(_activeTranslator);
+			if(Translator == null) { 
+				CoreUtil.LogError("Translator not implemented!");
+				return false;
 			}
 			Translator._plugin = this;
 			return true;

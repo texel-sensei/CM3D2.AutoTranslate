@@ -7,9 +7,9 @@ using System.Text;
 
 namespace CM3D2.AutoTranslate.Plugin
 {
-	class ExeTranslatorModule : TranslationModule
+	internal class ExeTranslatorModule : TranslationModule
 	{
-		protected override string Section => "ExeTranslator";
+		public override string Section => "ExeTranslator";
 
 		private string _exeName = " ";
 

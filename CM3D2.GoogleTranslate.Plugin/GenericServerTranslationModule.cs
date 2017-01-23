@@ -11,7 +11,7 @@ namespace CM3D2.AutoTranslate.Plugin
 {
 	class GenericServerTranslationModule : TranslationModule
 	{
-		protected override string Section => "GenericNetworkTranslation";
+		public override string Section => "GeneralNetworkTranslation";
 
 		private string _host = "localhost";
 		private int _port = 9586;
@@ -19,7 +19,7 @@ namespace CM3D2.AutoTranslate.Plugin
 		private TcpClient _connection;
 		private BufferedStream _stream;
 
-		private Dictionary<int, TranslationProtocoll.Packet> _arrivedTranslations = new Dictionary<int, TranslationProtocoll.Packet>();
+		private readonly Dictionary<int, TranslationProtocoll.Packet> _arrivedTranslations = new Dictionary<int, TranslationProtocoll.Packet>();
 		private int _openRequests = 0;
 
 		protected override void LoadConfig(CoreUtil.SectionLoader section)

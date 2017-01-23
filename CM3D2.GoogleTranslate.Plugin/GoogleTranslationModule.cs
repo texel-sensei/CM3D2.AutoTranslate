@@ -10,7 +10,7 @@ namespace CM3D2.AutoTranslate.Plugin
 {
 	internal class GoogleTranslationModule : TranslationModule
 	{
-		protected override string Section => "Google";
+		public override string Section => "Google";
 		private string _targetLanguage = "en";
 
 		public override bool Init()
