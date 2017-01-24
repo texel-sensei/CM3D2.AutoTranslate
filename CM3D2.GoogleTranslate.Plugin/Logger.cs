@@ -146,11 +146,11 @@ namespace CM3D2.AutoTranslate.Plugin
 		private static readonly ConsoleColor[] _colors =
 		{
 			ConsoleColor.DarkRed,
-			ConsoleColor.White,
+			ConsoleColor.Gray,
 			ConsoleColor.Green,
 			ConsoleColor.Yellow,
-			ConsoleColor.DarkCyan,
-			ConsoleColor.Gray
+			ConsoleColor.White,
+			ConsoleColor.DarkCyan
 		};
 	}
 }
