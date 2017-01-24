@@ -25,7 +25,7 @@ namespace CM3D2.AutoTranslate.Plugin
 			Executable,
 			GenericServer
 		};
-
+		
 		public string DataPathStrings => Path.Combine(this.DataPath, "Strings");
 		public string TranslationFolder => Path.Combine(DataPathStrings, _translationFolder);
 		public string TranslationFilePath => Path.Combine(TranslationFolder, _translationFile);
@@ -44,6 +44,7 @@ namespace CM3D2.AutoTranslate.Plugin
 	
 		public void Awake()
 		{
+			Logger.Init(this.DataPath);
 			DontDestroyOnLoad(this);
 			CoreUtil.Log("Starting Plugin", 0);
 			LoadConfig();

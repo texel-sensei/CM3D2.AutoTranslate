@@ -14,25 +14,13 @@ namespace CM3D2.AutoTranslate.Plugin
 		private static Dictionary<string,Dictionary<string, string>> _defaultValues = new Dictionary<string, Dictionary<string, string>>();
 		private static bool _needSaveConfig = false;
 
-		private static int _verbosity = 0;
-		private static bool _colorDebugOutput = false;
-
 		public static void Log(string msg, int level)
 		{
-			if (level < _verbosity)
+			if (!Enum.IsDefined(typeof(Level), level))
 			{
-				var prev = SafeConsole.ForegroundColor;
-				if (_colorDebugOutput)
-				{
-					SafeConsole.ForegroundColor = ConsoleColor.Green;
-				}
-				var line = $"{PLUGIN_NAME}: {msg}";
-				Console.WriteLine(line);
-				if (_colorDebugOutput)
-				{
-					SafeConsole.ForegroundColor = prev;
-				}
+				level = (int)Level.Verbose;
 			}
+			Logger.Log(msg, (Level)level);
 		}
 
 		public static void StartLoadingConfig(ExIni.IniFile pref)
@@ -44,8 +32,7 @@ namespace CM3D2.AutoTranslate.Plugin
 		private static void LoadConfig()
 		{
 			var section = LoadSection("Debug");
-			section.LoadValue("VerbosityLevel", ref _verbosity);
-			section.LoadValue("ColorConsoleOutput", ref _colorDebugOutput);
+			Logger.LoadConfig(section);
 		}
 
 		public static bool FinishLoadingConfig()
@@ -55,7 +42,7 @@ namespace CM3D2.AutoTranslate.Plugin
 
 		public static void LogError(string msg)
 		{
-			Debug.LogError($"{PLUGIN_NAME}: {msg}");
+			Logger.LogError(msg);
 		}
 
 		public static T ChangeType<T>(string obj)
@@ -66,7 +53,6 @@ namespace CM3D2.AutoTranslate.Plugin
 			}
 			return (T)Convert.ChangeType(obj, typeof(T));
 		}
-
 
 		public class SectionLoader
 		{
