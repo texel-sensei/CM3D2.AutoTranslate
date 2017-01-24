@@ -57,7 +57,7 @@ namespace CM3D2.AutoTranslate.Plugin
 
 		public static void SendTranslationRequest(TranslationData data, BufferedStream outStream)
 		{
-			CoreUtil.Log($"Sending packet {data.Id}", 0);
+			Logger.Log($"Sending packet {data.Id}", Level.Debug);
 			var pack = new Packet
 			{
 				method = PacketMethod.translate,
@@ -79,7 +79,7 @@ namespace CM3D2.AutoTranslate.Plugin
 			public WaitForRead(Stream stream, byte[] buffer, int offset, int size)
 			{
 				_stream = stream;
-				CoreUtil.Log("Begin reading", 0);
+				Logger.Log("Begin reading", Level.Verbose);
 				/*
 				stream.BeginRead(buffer, offset, size, ar =>
 				{
@@ -119,11 +119,11 @@ namespace CM3D2.AutoTranslate.Plugin
 				if (size == 0)
 				{
 					var wait = new WaitForRead(inStream, _buffer, 0, _buffer.Length);
-					CoreUtil.Log("Waiting for data...", 0);
+					Logger.Log("Waiting for data...");
 					yield return wait;
 					size = wait.GetReadBytes;
 					offset = 0;
-					CoreUtil.Log($"Got {size} bytes", 0);
+					Logger.Log($"Got {size} bytes");
 				}
 
 				for(; offset <size;++offset)
@@ -146,7 +146,7 @@ namespace CM3D2.AutoTranslate.Plugin
 				}
 			} while (!foundStart && stackDepth > 0);
 			output.data = builder.ToString();
-			CoreUtil.Log(output.data, 2);
+			Logger.Log(output.data, Level.Verbose);
 			output.ready = true;
 		}
 
