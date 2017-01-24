@@ -23,7 +23,9 @@ namespace CM3D2.AutoTranslate.Plugin
 		public static int Verbosity = 1;
 		public static bool ColorOutput = false;
 		private static bool _logToFile = false;
+		private static StreamWriter _logFileStream;
 		private static string _logfileName = "AutoTranslate.log";
+		private static string _logBackupfileName = "AutoTranslate.old.log";
 
 		private static string _dataPath;
 		private static string _logFolderName = "Log/";
@@ -35,14 +37,44 @@ namespace CM3D2.AutoTranslate.Plugin
 			section.LoadValue("VerbosityLevel", ref Verbosity);
 			section.LoadValue("ColorConsoleOutput", ref ColorOutput);
 			section.LoadValue("LogToFile", ref _logToFile);
+
+			try
+			{
+				if (_logToFile)
+				{
+					_logFileStream = new StreamWriter(File.Open(LogFile, FileMode.Create, FileAccess.Write));
+				}
+			}
+			catch (Exception e)
+			{
+				LogError($"Failed to open logfile ${LogFile}", e);
+			}
 		}
 
 		public static void Init(string path)
 		{
 			_dataPath = path;
-			if (!Directory.Exists(LogFolder))
+			try
 			{
-				Directory.CreateDirectory(LogFolder);
+				if (!Directory.Exists(LogFolder))
+				{
+					Directory.CreateDirectory(LogFolder);
+				}
+				if (File.Exists(LogFile))
+				{
+					var bak = Path.Combine(LogFolder, _logBackupfileName);
+					if (File.Exists(bak))
+					{
+						File.Delete(bak);
+					}	
+					File.Move(LogFile, bak);
+					Log($"Created Backup logfile", Level.Debug);
+				}
+			}
+			catch (Exception e)
+			{
+				_logFileStream = null;
+				LogError($"Failed initialization of Logfile {LogFile}", e);
 			}
 		}
 
@@ -65,13 +97,28 @@ namespace CM3D2.AutoTranslate.Plugin
 		{
 			var line = FormatMessage(msg, Level.Error);
 			WriteLog(line, Level.Error);
+			WriteLog($"Log @{Environment.StackTrace}", Level.Error);
+		}
+
+		public static void LogError(object msg, Exception e)
+		{
+			var line = FormatMessage(msg, Level.Error);
+			WriteLog(line, Level.Error);
+			WriteLog($"Got Exception: {e.GetType().FullName}", Level.Error);
+			WriteLog($"Log @{Environment.StackTrace}", Level.Error);
+			WriteLog($"\t@{e.TargetSite.Name}", Level.Error);
+			WriteLog(e.Message, Level.Error);
+			WriteLog(e.StackTrace, Level.Error);
+			
 		}
 
 		public static void LogError(Exception e)
 		{
 			var line = FormatMessage($"Got an {e.GetType().FullName} exception!", Level.Error);
 			WriteLog(line, Level.Error);
+			WriteLog($"Log @{Environment.StackTrace}", Level.Error);
 			WriteLog($"\t@{e.TargetSite.Name}", Level.Error);
+			WriteLog(e.Message, Level.Error);
 			WriteLog(e.StackTrace, Level.Error);
 		}
 
@@ -90,7 +137,8 @@ namespace CM3D2.AutoTranslate.Plugin
 			Console.WriteLine(msg);
 			if (_logToFile)
 			{
-				File.AppendAllText(LogFile, msg + Environment.NewLine);
+				_logFileStream?.Write(msg + Environment.NewLine);
+				_logFileStream?.Flush();
 			}
 			SafeConsole.ForegroundColor = prev;
 		}

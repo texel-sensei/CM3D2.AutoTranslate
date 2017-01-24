@@ -2,6 +2,7 @@
 using System.Collections;
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using System.Reflection;
 using System.Runtime.InteropServices;
 using System.Text;
@@ -45,52 +46,59 @@ namespace CM3D2.AutoTranslate.Plugin
 		public void Awake()
 		{
 			Logger.Init(this.DataPath);
-			DontDestroyOnLoad(this);
-			CoreUtil.Log("Starting Plugin", 0);
-			LoadConfig();
-			if (!_pluginActive)
+			try
 			{
-				CoreUtil.Log("Plugin is disabled.", 0);
+				DontDestroyOnLoad(this);
+				LoadConfig();
+				CoreUtil.Log("Starting Plugin", 0);
+				if (!_pluginActive)
+				{
+					CoreUtil.Log("Plugin is disabled.", 0);
+					if (CoreUtil.FinishLoadingConfig())
+					{
+						SaveConfig();
+					}
+					Destroy(this);
+					return;
+				}
+
+				var success = LoadTranslator();
+				if (!success)
+				{
+					CoreUtil.LogError($"Failed to load Translation module '{_activeTranslator}'");
+					if (CoreUtil.FinishLoadingConfig())
+					{
+						SaveConfig();
+					}
+					Destroy(this);
+					return;
+				}
+
+				Translator.LoadConfig();
 				if (CoreUtil.FinishLoadingConfig())
 				{
 					SaveConfig();
 				}
-				Destroy(this);
-				return;
-			}
 
-			var success = LoadTranslator();
-			if (!success)
-			{
-				CoreUtil.LogError($"Failed to load Translation module '{_activeTranslator}'");
-				if (CoreUtil.FinishLoadingConfig())
+				CoreUtil.Log($"Initializing Module {_activeTranslator}", 1);
+				success = Translator.Init();
+				if (!success)
 				{
-					SaveConfig();
+					CoreUtil.LogError($"Failed to load Translation module {_activeTranslator}");
+					Destroy(this);
+					return;
 				}
-				Destroy(this);
-				return;
-			}
 
-			Translator.LoadConfig();
-			if (CoreUtil.FinishLoadingConfig())
+
+				CoreUtil.Log($"Using translation cache file @: {TranslationFilePath}", 1);
+				StartCoroutine(HookTranslator());
+				LoadCacheFromDisk();
+				_alreadyInFile = new Dictionary<string, string>(_translationCache);
+			}
+			catch (Exception e)
 			{
-				SaveConfig();
+				Logger.LogError(e);
 			}
-
-			CoreUtil.Log($"Initializing Module {_activeTranslator}", 1);
-			success = Translator.Init();
-			if (!success)
-			{
-				CoreUtil.LogError($"Failed to load Translation module {_activeTranslator}");
-				Destroy(this);
-				return;
-			}
-
-
-			CoreUtil.Log($"Using translation cache file @: {TranslationFilePath}", 1);
-			StartCoroutine(HookTranslator());
-			LoadCacheFromDisk();
-			_alreadyInFile = new Dictionary<string, string>(_translationCache);
 		}
 
 		private bool LoadTranslator()
@@ -271,10 +279,17 @@ namespace CM3D2.AutoTranslate.Plugin
 
 		public void OnApplicationQuit()
 		{
-			Translator.DeInit();
-			if (_dumpCache) {
-				CoreUtil.Log("Saving Cache...",1);
-				SaveCacheToDisk();
+			try
+			{
+				Translator.DeInit();
+				if (_dumpCache) {
+					CoreUtil.Log("Saving Cache...",1);
+					SaveCacheToDisk();
+				}
+			}
+			catch (Exception e)
+			{
+				Logger.LogError(e);
 			}
 		}
 	}
