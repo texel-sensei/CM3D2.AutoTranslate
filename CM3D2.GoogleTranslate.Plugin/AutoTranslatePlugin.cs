@@ -152,10 +152,24 @@ namespace CM3D2.AutoTranslate.Plugin
 				File.Create(TranslationFilePath);
 				return;
 			}
+			var lineNr = 1;
 			foreach (var line in File.ReadAllLines(TranslationFilePath))
 			{
 				var parts = line.Split('\t');
-				_translationCache[parts[0]] = parts[1];
+				if (parts.Length < 2)
+				{
+					Logger.Log($"Cache line (Line {lineNr}) is invalid! It contains no tab character!", Level.Warn);
+					Logger.Log($"Offending line is \"{line}\"", Level.Warn);
+				}
+				else if (parts.Length > 2)
+				{
+					Logger.Log($"Cache line (Line {lineNr}) is invalid! It contains more than one tab character!", Level.Warn);
+					Logger.Log($"Offending line is \"{line}\"", Level.Warn);
+				}
+				else { 
+					_translationCache[parts[0]] = parts[1];
+				}
+				lineNr++;
 			}
 		}
 
