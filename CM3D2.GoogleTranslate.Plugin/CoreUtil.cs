@@ -78,10 +78,11 @@ namespace CM3D2.AutoTranslate.Plugin
 				{
 					val = ChangeType<T>(_defaults[key]);
 					_needSaveConfig = true;
-					Logger.LogError(
+					Logger.Log(
 						$"Invalid value '{val.ToString()}' for Config value '{_section}'/'{key}', resetting to default.",
-						e
+						Level.Warn
 					);
+					Logger.LogException(e, Level.Warn);
 				}
 			}
 		}

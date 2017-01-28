@@ -104,22 +104,23 @@ namespace CM3D2.AutoTranslate.Plugin
 		{
 			var line = FormatMessage(msg, Level.Error);
 			WriteLog(line, Level.Error);
-			WriteLog($"Got Exception: {e.GetType().FullName}", Level.Error);
-			WriteLog($"Log @{Environment.StackTrace}", Level.Error);
-			WriteLog($"\t@{e.TargetSite.Name}", Level.Error);
-			WriteLog(e.Message, Level.Error);
-			WriteLog(e.StackTrace, Level.Error);
-			
+			LogException(e, Level.Error);	
 		}
 
 		public static void LogError(Exception e)
 		{
 			var line = FormatMessage($"Got an {e.GetType().FullName} exception!", Level.Error);
 			WriteLog(line, Level.Error);
-			WriteLog($"Log @{Environment.StackTrace}", Level.Error);
-			WriteLog($"\t@{e.TargetSite.Name}", Level.Error);
-			WriteLog(e.Message, Level.Error);
-			WriteLog(e.StackTrace, Level.Error);
+			LogException(e, Level.Error);
+		}
+
+		public static void LogException(Exception e, Level l)
+		{
+			WriteLog($"Got Exception: {e.GetType().FullName}", l);
+			WriteLog(e.Message, l);
+			WriteLog($"Log {Environment.StackTrace}", l);
+			WriteLog($"\t@{e.TargetSite.Name}", l);
+			WriteLog(e.StackTrace, l);
 		}
 
 		private static string FormatMessage(object msg, Level level)
