@@ -5,6 +5,7 @@ using System.ComponentModel;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
+using System.Reflection.Emit;
 using System.Text;
 using System.Threading.Tasks;
 using Newtonsoft.Json;
@@ -37,66 +38,32 @@ namespace OfflineTranslator
 
 		public static void SendPacket(Packet data, Stream outStream)
 		{
-			if (data.translation != null)
-				data.translation = Uri.EscapeDataString(data.translation);
-			if (data.text != null)
-				data.text = Uri.EscapeDataString(data.text);
-
 			var str = JsonConvert.SerializeObject(data);
-			var bytes = Encoding.ASCII.GetBytes(str);
-			//outStream.BeginWrite(bytes, 0, bytes.Length, outStream.EndWrite, null);
+			var bytes = Encoding.UTF8.GetBytes(str);
+
+			var size = bytes.Length;
+			var netSize = BitConverter.GetBytes(System.Net.IPAddress.HostToNetworkOrder(size));
+
+			outStream.Write(netSize, 0, netSize.Length);
 			outStream.Write(bytes, 0, bytes.Length);
 		}
 
-		private class Buffer
-		{
-			public byte[] buffer = new byte[1024];
-			public int size = 0;
-
-			public void drop(int num)
-			{
-				if (num >= size)
-				{
-					size = 0;
-					return;
-				}
-				Array.Copy(buffer, num, buffer, 0, size - num);
-				size -= num;
-			}
-
-			public void set(byte[] data, int offset, int length)
-			{
-				Array.Copy(data, offset, buffer, 0, length);
-				size = length;
-			}
-		}
 
 		public static string ReadJsonObject(Stream inStream)
 		{
+			var sizeBuffBytes = new byte[4];
+			inStream.Read(sizeBuffBytes, 0, sizeBuffBytes.Length);
 
-			var builder = new StringBuilder();
-			var stackDepth = 0;
-			var found_start = false;
-			do
-			{
-				var c = (char)inStream.ReadByte();
-				switch (c)
-				{
-					case '{':
-						stackDepth++;
-						found_start = true;
-						break;
-					case '}':
-						stackDepth--;
-						break;
-				}
-				builder.Append(c);
-			} while (!found_start || stackDepth > 0);
-			return builder.ToString();
+			var size = System.Net.IPAddress.NetworkToHostOrder(BitConverter.ToInt32(sizeBuffBytes, 0));
+			Program.Log($"Read packetsize: {size}");
+			var _buffer = new byte[size];
+			inStream.Read(_buffer, 0, _buffer.Length);
+			return Encoding.UTF8.GetString(_buffer);
 		}
 
 		public static  Packet ReadPacket(Stream stream)
 		{
+			Program.Log("Begin reading packet");
 			var str = ReadJsonObject(stream);
 
 			Program.Log(str);

@@ -66,7 +66,12 @@ namespace CM3D2.AutoTranslate.Plugin
 			};
 
 			var str = JsonFx.Json.JsonWriter.Serialize(pack);
-			var bytes = Encoding.ASCII.GetBytes(str);
+			var bytes = Encoding.UTF8.GetBytes(str);
+
+			var size = bytes.Length;
+			var netSize = BitConverter.GetBytes(System.Net.IPAddress.HostToNetworkOrder(size));
+
+			outStream.Write(netSize, 0, netSize.Length);
 			outStream.Write(bytes, 0, bytes.Length);
 		}
 
@@ -105,47 +110,37 @@ namespace CM3D2.AutoTranslate.Plugin
 			public bool ready = false;
 		}
 
-		private static readonly byte[] _buffer = new byte[4096];
+		
+		private static readonly byte[] _sizeBuffBytes = new byte[4];
 		private static int offset = 0;
 		private static int size = 0;
 		public static IEnumerator ReadJsonObject(BufferedStream inStream, OutString output)
 		{
 			
-			var builder = new StringBuilder();
-			var stackDepth = 0;
-			var foundStart = false;
-			do
+			var waitSize = new WaitForRead(inStream, _sizeBuffBytes, 0, _sizeBuffBytes.Length);
+			Logger.Log("Waiting for size packet");
+			yield return waitSize;
+
+			if (waitSize.GetReadBytes != _sizeBuffBytes.Length)
 			{
-				if (size == 0)
-				{
-					var wait = new WaitForRead(inStream, _buffer, 0, _buffer.Length);
-					Logger.Log("Waiting for data...");
-					yield return wait;
-					size = wait.GetReadBytes;
-					offset = 0;
-					Logger.Log($"Got {size} bytes");
-				}
+				Logger.Log("Got to few bytes for packet size!", Level.Warn);
+				yield break;
+			}
 
-				for(; offset <size;++offset)
-				{
-					var c = (char) _buffer[offset];
+			var size = System.Net.IPAddress.NetworkToHostOrder(BitConverter.ToInt32(_sizeBuffBytes, 0));
+			var _buffer = new byte[size];
 
-					switch (c)
-					{
-						case '{':
-							foundStart = true;
-							stackDepth++;
-							break;
-						case '}':
-							stackDepth--;
-							break;
-					}
-					builder.Append(c);
-					if (foundStart && stackDepth == 0)
-						break;
-				}
-			} while (!foundStart && stackDepth > 0);
-			output.data = builder.ToString();
+			var waitPack = new WaitForRead(inStream, _buffer, 0, _buffer.Length);
+			Logger.Log("Waiting for packet");
+			yield return waitPack;
+
+			if (waitPack.GetReadBytes != _buffer.Length)
+			{
+				Logger.Log($"Got too few bytes for packet! Expected {_buffer.Length}, Got {waitPack.GetReadBytes}");
+				yield break;
+			}
+
+			output.data = Encoding.UTF8.GetString(_buffer);
 			Logger.Log(output.data, Level.Verbose);
 			output.ready = true;
 		}

@@ -108,7 +108,11 @@ namespace OfflineTranslator
 			server.Start();
 
 			Log("starting listening!");
-			/*
+
+			var dll = test();
+
+			Log($"Init: {init2(path, 0)}");
+
 			while (true)
 			{
 				try
@@ -122,7 +126,18 @@ namespace OfflineTranslator
 						var pack = TranslationProtocoll.ReadPacket(stream);
 						Log($"Got packet #{pack.id} and text {pack.text}");
 						pack.method = TranslationProtocoll.PacketMethod.translation;
-						pack.translation = "Cool Translation: " + pack.text;
+						
+
+						int size = pack.text.Length * 5;
+						var builder = new StringBuilder(size);
+						Log(size);
+						var str = NativeUtf8FromString(pack.text);
+						var o = translate(0, str, size, builder);
+						Marshal.FreeHGlobal(str);
+						Log($"Translate output: {o}");
+						Log("Translation: " + builder.ToString());
+						pack.translation = builder.ToString();
+
 						pack.success = true;
 						TranslationProtocoll.SendPacket(pack, stream);
 
@@ -133,25 +148,11 @@ namespace OfflineTranslator
 					Log(e.Message);
 				}
 			}
-			*/
 
-			var stream = new FileStream("messages.json", FileMode.Open);
-			var pack = TranslationProtocoll.ReadPacket(stream);
-			Log(pack.text);
 
-			var dll = test();
 
-			Log($"Init: {init2(path, 0)}");
-			int size = pack.text.Length * 5;
-			var builder = new StringBuilder(size);
-			Log(size);
-			var str = NativeUtf8FromString(pack.text);
-			var o = translate(0, str, size, builder);
-			Marshal.FreeHGlobal(str);
-			Log($"Translate output: {o}");
-			Log("Translation: " + builder.ToString());
+
 			end();
-
 			NativeMethods.FreeLibrary(dll);
 
 		}
