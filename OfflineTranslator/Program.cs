@@ -48,12 +48,14 @@ namespace OfflineTranslator
 		static eg_translate_multi translate;
 		static eg_init init;
 		static eg_init2 init2;
-		static string path = @"D:\Program Files (x86)\Power Translator 15\Nova\JaEn\EngineDll_je.dll";
+		static string path = @"D:\Program Files (x86)\Power Translator 15\Nova\JaEn";
+		private static string dllName = @"EngineDll_je.dll";
+
 
 		static IntPtr test()
 		{
 			
-			IntPtr pDll = NativeMethods.LoadLibrary(path);
+			IntPtr pDll = NativeMethods.LoadLibrary(Path.Combine(path, dllName));
 			//oh dear, error handling here
 			if (pDll == IntPtr.Zero)
 			{
@@ -72,10 +74,10 @@ namespace OfflineTranslator
 			if (addr3 == IntPtr.Zero) Log("Failed load 3");
 
 
-			init = (eg_init)Marshal.GetDelegateForFunctionPointer(addr1, typeof(eg_init));
+			init = (eg_init)Marshal.GetDelegateForFunctionPointer(addr0, typeof(eg_init));
 			init2 = (eg_init2)Marshal.GetDelegateForFunctionPointer(addr1,typeof(eg_init2));
 			end = (eg_end)Marshal.GetDelegateForFunctionPointer(addr2, typeof(eg_end));
-			translate = (eg_translate_multi)Marshal.GetDelegateForFunctionPointer(addr2, typeof(eg_translate_multi));
+			translate = (eg_translate_multi)Marshal.GetDelegateForFunctionPointer(addr3, typeof(eg_translate_multi));
 
 	
 			return pDll;
@@ -85,8 +87,9 @@ namespace OfflineTranslator
 		{
 			var encoding = Encoding.GetEncoding(932);
 			var buffer = encoding.GetBytes(managedString);
-			IntPtr nativeUtf8 = Marshal.AllocHGlobal(buffer.Length);
+			IntPtr nativeUtf8 = Marshal.AllocHGlobal(buffer.Length+1);
 			Marshal.Copy(buffer, 0, nativeUtf8, buffer.Length);
+			Marshal.WriteByte(nativeUtf8, buffer.Length,0);
 			return nativeUtf8;
 		}
 
@@ -138,11 +141,13 @@ namespace OfflineTranslator
 
 			var dll = test();
 
-			Log($"Init: {init2(@"D:\Program Files (x86)\Power Translator 15\Nova\JaEn\", 0)}");
+			Log($"Init: {init2(path, 0)}");
 			int size = pack.text.Length * 5;
 			var builder = new StringBuilder(size);
-			var str = NativeUtf8FromString("Hello World!");
+			Log(size);
+			var str = NativeUtf8FromString(pack.text);
 			var o = translate(0, str, size, builder);
+			Marshal.FreeHGlobal(str);
 			Log($"Translate output: {o}");
 			Log("Translation: " + builder.ToString());
 			end();
