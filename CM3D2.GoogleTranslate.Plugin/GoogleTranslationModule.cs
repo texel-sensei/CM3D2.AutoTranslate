@@ -89,9 +89,6 @@ namespace CM3D2.AutoTranslate.Plugin
 
 			string url = $@"https://translate.googleapis.com/translate_a/single?client=gtx&sl={fromCulture}&tl={toCulture}&dt=t&q={WWW.EscapeURL(text)}";
 
-			// Retrieve Translation with HTTP GET call
-			string html = null;
-
 			var headers = new Dictionary<string, string> { { "User-Agent", "Mozilla/5.0" }, { "Accept-Charset", "UTF-8" } };
 			var www = new WWW(url, null, headers);
 			yield return www;
@@ -99,24 +96,15 @@ namespace CM3D2.AutoTranslate.Plugin
 
 			if (www.error != null)
 			{
-				CoreUtil.LogError(www.error);
+				Logger.LogError(www.error);
 				yield break;
 			}
-			CoreUtil.Log(www.text, 5);
 
-			html = www.text;
-
-			// First string in json is the translation
-			var result = ExtractTranslationFromGoogleString(html);
+			var result = ExtractTranslationFromGoogleString(www.text);
 
 			result = result.Replace("\\n", "");
 
-			//return WebUtils.DecodeJsString(result);
-
-			// Result is a JavaScript string so we need to deserialize it properly
-			//JavaScriptSerializer ser = new JavaScriptSerializer();
-			//return ser.Deserialize(result, typeof(string)) as string;
-			CoreUtil.Log($"Got Translation from google: {result}", 3);
+			Logger.Log($"Got Translation from google: {result}", Level.Debug);
 
 			translation.Translation = result;
 			translation.Success = true;

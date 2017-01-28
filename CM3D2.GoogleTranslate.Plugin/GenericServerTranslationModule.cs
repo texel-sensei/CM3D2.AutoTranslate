@@ -37,7 +37,7 @@ namespace CM3D2.AutoTranslate.Plugin
 			}
 			catch (Exception e)
 			{
-				CoreUtil.LogError(e.Message);
+				Logger.LogError(e);
 				return false;
 			}
 			return true;
@@ -49,8 +49,8 @@ namespace CM3D2.AutoTranslate.Plugin
 			{
 				var pack = new TranslationProtocoll.Packet();
 				yield return TranslationProtocoll.ReadPacket(_stream, pack);
-				CoreUtil.Log($"Got data! Packet #{pack.id}", 0);
-				CoreUtil.Log(pack.text, 0);
+				Logger.Log($"Got data! Packet #{pack.id}", 0);
+				Logger.Log(pack.text, 0);
 				if (pack.method == TranslationProtocoll.PacketMethod.translation)
 				{
 					_openRequests--;
