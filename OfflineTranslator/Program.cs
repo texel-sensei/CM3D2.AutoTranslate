@@ -123,24 +123,31 @@ namespace OfflineTranslator
 					Log("Someone connected!");
 					while (client.Connected)
 					{
-						var pack = TranslationProtocoll.ReadPacket(stream);
-						Log($"Got packet #{pack.id} and text {pack.text}");
-						pack.method = TranslationProtocoll.PacketMethod.translation;
+						try
+						{
+							var pack = TranslationProtocoll.ReadPacket(stream);
+							Log($"Got packet #{pack.id} and text {pack.text}");
+							pack.method = TranslationProtocoll.PacketMethod.translation;
 						
 
-						int size = pack.text.Length * 5;
-						var builder = new StringBuilder(size);
-						Log(size);
-						var str = NativeUtf8FromString(pack.text);
-						var o = translate(0, str, size, builder);
-						Marshal.FreeHGlobal(str);
-						Log($"Translate output: {o}");
-						Log("Translation: " + builder.ToString());
-						pack.translation = builder.ToString();
-
-						pack.success = true;
-						TranslationProtocoll.SendPacket(pack, stream);
-
+							int size = pack.text.Length * 5;
+							var builder = new StringBuilder(size);
+							Log(size);
+							var str = NativeUtf8FromString(pack.text);
+							var o = translate(0, str, size, builder);
+							Marshal.FreeHGlobal(str);
+							Log($"Translate output: {o}");
+							Log("Translation: " + builder.ToString());
+							pack.translation = builder.ToString();
+							pack.text = null;
+							pack.success = true;
+							TranslationProtocoll.SendPacket(pack, stream);
+						}
+						catch (Exception e)
+						{
+							Log("Got exception in main loop");
+							Log(e);
+						}
 					}
 				}
 				catch(Exception e)

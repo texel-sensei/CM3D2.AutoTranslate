@@ -45,7 +45,7 @@ namespace OfflineTranslator
 
 			var size = bytes.Length;
 			var netSize = BitConverter.GetBytes(System.Net.IPAddress.HostToNetworkOrder(size));
-
+			Program.Log($"Sending packet {str} ({size} bytes)");
 			outStream.Write(netSize, 0, netSize.Length);
 			outStream.Write(bytes, 0, bytes.Length);
 		}
