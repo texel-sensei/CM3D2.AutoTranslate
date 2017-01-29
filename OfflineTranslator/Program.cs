@@ -13,18 +13,7 @@ namespace OfflineTranslator
 {
 
 
-	static class NativeMethods
-	{
-		[DllImport("kernel32.dll")]
-		public static extern IntPtr LoadLibrary(string dllToLoad);
 
-		[DllImport("kernel32.dll")]
-		public static extern IntPtr GetProcAddress(IntPtr hModule, string procedureName);
-
-
-		[DllImport("kernel32.dll")]
-		public static extern bool FreeLibrary(IntPtr hModule);
-	}
 
 	internal class Program
 	{
@@ -52,37 +41,6 @@ namespace OfflineTranslator
 		private static string dllName = @"EngineDll_je.dll";
 
 
-		static IntPtr test()
-		{
-			
-			IntPtr pDll = NativeMethods.LoadLibrary(Path.Combine(path, dllName));
-			//oh dear, error handling here
-			if (pDll == IntPtr.Zero)
-			{
-				Log("pDll == null");
-				return IntPtr.Zero;
-			}
-
-			var addr0 = NativeMethods.GetProcAddress(pDll, "eg_init");
-			var addr1 = NativeMethods.GetProcAddress(pDll, "eg_init2");
-			var addr2 = NativeMethods.GetProcAddress(pDll, "eg_end");
-			var addr3 = NativeMethods.GetProcAddress(pDll, "eg_translate_multi");
-
-			if (addr0 == IntPtr.Zero) Log("Failed load 0");
-			if (addr1 == IntPtr.Zero) Log("Failed load 1");
-			if (addr2 == IntPtr.Zero) Log("Failed load 2");
-			if (addr3 == IntPtr.Zero) Log("Failed load 3");
-
-
-			init = (eg_init)Marshal.GetDelegateForFunctionPointer(addr0, typeof(eg_init));
-			init2 = (eg_init2)Marshal.GetDelegateForFunctionPointer(addr1,typeof(eg_init2));
-			end = (eg_end)Marshal.GetDelegateForFunctionPointer(addr2, typeof(eg_end));
-			translate = (eg_translate_multi)Marshal.GetDelegateForFunctionPointer(addr3, typeof(eg_translate_multi));
-
-	
-			return pDll;
-		}
-
 		public static IntPtr NativeUtf8FromString(string managedString)
 		{
 			var encoding = Encoding.GetEncoding(932);
@@ -109,7 +67,31 @@ namespace OfflineTranslator
 
 			Log("starting listening!");
 
-			var dll = test();
+			var loader = new AutoTranslate.Core.UnmanagedDllLoader();
+			var succ = loader.LoadDll(Path.Combine(path, dllName));
+
+			if (!succ)
+			{
+				Log("Failed loading Dll");
+				loader.Dispose();
+				return;
+			}
+
+
+			try
+			{
+				loader.LoadFunction("eg_end", out end);
+				loader.LoadFunction("eg_translate_multi", out translate);
+				loader.LoadFunction("eg_init", out init);
+				loader.LoadFunction("eg_init2", out init2);
+			}
+			catch (Exception e)
+			{
+				Log(e);
+				return;
+			}
+
+
 
 			Log($"Init: {init2(path, 0)}");
 
@@ -156,11 +138,8 @@ namespace OfflineTranslator
 				}
 			}
 
-
-
-
 			end();
-			NativeMethods.FreeLibrary(dll);
+			loader.Dispose();
 
 		}
 	}
