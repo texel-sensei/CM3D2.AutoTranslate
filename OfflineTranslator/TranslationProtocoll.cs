@@ -9,6 +9,7 @@ using System.Reflection.Emit;
 using System.Text;
 using System.Threading.Tasks;
 using Newtonsoft.Json;
+using Newtonsoft.Json.Converters;
 
 namespace OfflineTranslator
 {
@@ -24,6 +25,7 @@ namespace OfflineTranslator
 		[System.Serializable]
 		internal class Packet
 		{
+			[JsonConverter(typeof(StringEnumConverter))]
 			public PacketMethod method { get; set; }
 
 			[DefaultValue(null)]
