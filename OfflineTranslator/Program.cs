@@ -33,50 +33,49 @@ namespace OfflineTranslator
 			using (var translator = new LECWrapper())
 			{
 				translator.Init();
-				while (true)
+				
+				try
 				{
-					try
+					Log("listening!");
+
+					var client = server.AcceptTcpClient();
+					var stream = client.GetStream();
+
+					Log("Someone connected!");
+					while (client.Connected)
 					{
-						Log("listening!");
-
-						var client = server.AcceptTcpClient();
-						var stream = client.GetStream();
-
-						Log("Someone connected!");
-						while (client.Connected)
+						try
 						{
-							try
+							var pack = TranslationProtocoll.ReadPacket(stream);
+							Log($"Got packet #{pack.id} and text {pack.text}");
+							if (pack.method == TranslationProtocoll.PacketMethod.quit)
 							{
-								var pack = TranslationProtocoll.ReadPacket(stream);
-								Log($"Got packet #{pack.id} and text {pack.text}");
-								if (pack.method == TranslationProtocoll.PacketMethod.quit)
-								{
-									Log("Client quit.");
-									break;
-								}
-								pack.method = TranslationProtocoll.PacketMethod.translation;
+								Log("Client quit.");
+								break;
+							}
+							pack.method = TranslationProtocoll.PacketMethod.translation;
 
-								var translation = translator.Translate(pack.text);
-								Log($"Translation for #{pack.id} is {translation}");
-								pack.translation = translation;
-								pack.text = null;
-								pack.success = translation != null;
-								//Thread.Sleep(2000);
-								TranslationProtocoll.SendPacket(pack, stream);
-							}
-							catch (Exception e)
-							{
-								Log("Got exception in main loop");
-								Log(e);
-							}
+							var translation = translator.Translate(pack.text);
+							Log($"Translation for #{pack.id} is {translation}");
+							pack.translation = translation;
+							pack.text = null;
+							pack.success = translation != null;
+							//Thread.Sleep(2000);
+							TranslationProtocoll.SendPacket(pack, stream);
+						}
+						catch (Exception e)
+						{
+							Log("Got exception in main loop");
+							Log(e);
 						}
 					}
-					catch (Exception e)
-					{
-						Log(e.Message);
-					}
+				}
+				catch (Exception e)
+				{
+					Log(e.Message);
 				}
 			}
 		}
+		
 	}
 }

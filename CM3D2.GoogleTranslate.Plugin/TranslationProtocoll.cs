@@ -51,7 +51,7 @@ namespace CM3D2.AutoTranslate.Plugin
 			return true;
 		}
 
-		public static void SendPacket(Packet pack, BufferedStream outStream)
+		public static void SendPacket(Packet pack, Stream outStream)
 		{
 			
 			var str = JsonFx.Json.JsonWriter.Serialize(pack);
@@ -65,7 +65,7 @@ namespace CM3D2.AutoTranslate.Plugin
 			outStream.Flush();
 		}
 
-	public static void SendTranslationRequest(TranslationData data, BufferedStream outStream)
+	public static void SendTranslationRequest(TranslationData data, Stream outStream)
 		{
 			Logger.Log($"Sending packet {data.Id}", Level.Debug);
 			var pack = new Packet
@@ -82,7 +82,6 @@ namespace CM3D2.AutoTranslate.Plugin
 		{
 			private readonly Stream _stream;
 			private bool _finished = false;
-			private int _bytesRead;
 
 			public WaitForRead(Stream stream, byte[] buffer, int offset, int size)
 			{
@@ -91,17 +90,18 @@ namespace CM3D2.AutoTranslate.Plugin
 				/*
 				stream.BeginRead(buffer, offset, size, ar =>
 				{
-					CoreUtil.Log("somethingsomething", 0);
-					_bytesRead = _stream.EndRead(ar);
+					Logger.Log($"{ar.IsCompleted} {ar}");
+					Logger.Log("somethingsomething", Level.Debug);
+					GetReadBytes = _stream.EndRead(ar);
 					_finished = true;
 				}, this);
-				CoreUtil.Log("after begin read", 0);
+				Logger.Log("after begin read");
 				*/
-				_bytesRead = _stream.Read(buffer, offset, size);
+				GetReadBytes = _stream.Read(buffer, offset, size);
 				_finished = true;
 			}
 
-			public int GetReadBytes => _bytesRead;
+			public int GetReadBytes { get; private set; }
 
 			public override bool keepWaiting => !_finished;
 
@@ -115,7 +115,7 @@ namespace CM3D2.AutoTranslate.Plugin
 
 		
 
-		public static IEnumerator ReadJsonObject(BufferedStream inStream, OutString output)
+		public static IEnumerator ReadJsonObject(Stream inStream, OutString output)
 		{
 			var sizeBuffBytes = new byte[4];
 
@@ -142,6 +142,8 @@ namespace CM3D2.AutoTranslate.Plugin
 			if (waitPack.GetReadBytes != _buffer.Length)
 			{
 				Logger.Log($"Got too few bytes for packet! Expected {_buffer.Length}, Got {waitPack.GetReadBytes}");
+				var text = Encoding.UTF8.GetString(_buffer, 0, waitPack.GetReadBytes);
+				Logger.LogError($"Only got text {text}");
 				yield break;
 			}
 
@@ -150,7 +152,7 @@ namespace CM3D2.AutoTranslate.Plugin
 			output.ready = true;
 		}
 
-		public static IEnumerator ReadPacket(BufferedStream str, Packet pack)
+		public static IEnumerator ReadPacket(Stream str, Packet pack)
 		{
 			var output = new OutString();
 			yield return ReadJsonObject(str, output);

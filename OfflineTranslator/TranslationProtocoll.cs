@@ -55,7 +55,12 @@ namespace OfflineTranslator
 		public static string ReadJsonObject(Stream inStream)
 		{
 			var sizeBuffBytes = new byte[4];
-			inStream.Read(sizeBuffBytes, 0, sizeBuffBytes.Length);
+			var l = inStream.Read(sizeBuffBytes, 0, sizeBuffBytes.Length);
+
+			if (l != 4)
+			{
+				Program.Log($"Got not right amount of bytes for size! Got {l} instead of {sizeBuffBytes.Length}");
+			}
 
 			var size = System.Net.IPAddress.NetworkToHostOrder(BitConverter.ToInt32(sizeBuffBytes, 0));
 			Program.Log($"Read packetsize: {size}");
