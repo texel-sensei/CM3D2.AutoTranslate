@@ -10,7 +10,7 @@ using UnityEngine;
 
 namespace CM3D2.AutoTranslate.Plugin
 {
-	
+
 
 	internal static class TranslationProtocoll
 	{
@@ -26,14 +26,10 @@ namespace CM3D2.AutoTranslate.Plugin
 		{
 			public PacketMethod method { get; set; }
 
-			[DefaultValue(null)]
-			public int? id = null;
-			[DefaultValue(null)]
-			public string text;
-			[DefaultValue(null)]
-			public string translation;
-			[DefaultValue(null)]
-			public bool? success = null;
+			[DefaultValue(null)] public int? id = null;
+			[DefaultValue(null)] public string text;
+			[DefaultValue(null)] public string translation;
+			[DefaultValue(null)] public bool? success = null;
 		}
 
 		public static bool ParsePacketForTranslation(Packet p, TranslationData d)
@@ -55,7 +51,21 @@ namespace CM3D2.AutoTranslate.Plugin
 			return true;
 		}
 
-		public static void SendTranslationRequest(TranslationData data, BufferedStream outStream)
+		public static void SendPacket(Packet pack, BufferedStream outStream)
+		{
+			
+			var str = JsonFx.Json.JsonWriter.Serialize(pack);
+			var bytes = Encoding.UTF8.GetBytes(str);
+
+			var size = bytes.Length;
+			var netSize = BitConverter.GetBytes(System.Net.IPAddress.HostToNetworkOrder(size));
+
+			outStream.Write(netSize, 0, netSize.Length);
+			outStream.Write(bytes, 0, bytes.Length);
+			outStream.Flush();
+		}
+
+	public static void SendTranslationRequest(TranslationData data, BufferedStream outStream)
 		{
 			Logger.Log($"Sending packet {data.Id}", Level.Debug);
 			var pack = new Packet
@@ -65,14 +75,7 @@ namespace CM3D2.AutoTranslate.Plugin
 				id = data.Id
 			};
 
-			var str = JsonFx.Json.JsonWriter.Serialize(pack);
-			var bytes = Encoding.UTF8.GetBytes(str);
-
-			var size = bytes.Length;
-			var netSize = BitConverter.GetBytes(System.Net.IPAddress.HostToNetworkOrder(size));
-
-			outStream.Write(netSize, 0, netSize.Length);
-			outStream.Write(bytes, 0, bytes.Length);
+			SendPacket(pack, outStream);
 		}
 
 		public class WaitForRead : CustomYieldInstruction
@@ -111,28 +114,30 @@ namespace CM3D2.AutoTranslate.Plugin
 		}
 
 		
-		private static readonly byte[] _sizeBuffBytes = new byte[4];
-		private static int offset = 0;
-		private static int size = 0;
+
 		public static IEnumerator ReadJsonObject(BufferedStream inStream, OutString output)
 		{
-			
-			var waitSize = new WaitForRead(inStream, _sizeBuffBytes, 0, _sizeBuffBytes.Length);
+			var sizeBuffBytes = new byte[4];
+
+			var waitSize = new WaitForRead(inStream, sizeBuffBytes, 0, sizeBuffBytes.Length);
 			Logger.Log("Waiting for size packet");
 			yield return waitSize;
 
-			if (waitSize.GetReadBytes != _sizeBuffBytes.Length)
+			if (waitSize.GetReadBytes != sizeBuffBytes.Length)
 			{
 				Logger.Log("Got to few bytes for packet size!", Level.Warn);
 				yield break;
 			}
 
-			var size = System.Net.IPAddress.NetworkToHostOrder(BitConverter.ToInt32(_sizeBuffBytes, 0));
+			var size = System.Net.IPAddress.NetworkToHostOrder(BitConverter.ToInt32(sizeBuffBytes, 0));
+			Logger.Log($"Got packet size: {size} bytes", Level.Verbose);
 			var _buffer = new byte[size];
 
 			var waitPack = new WaitForRead(inStream, _buffer, 0, _buffer.Length);
 			Logger.Log("Waiting for packet");
 			yield return waitPack;
+
+			Logger.Log($"Got Packet of size {size}. ", Level.Verbose);
 
 			if (waitPack.GetReadBytes != _buffer.Length)
 			{
