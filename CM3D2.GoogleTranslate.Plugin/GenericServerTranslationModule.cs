@@ -94,6 +94,11 @@ namespace CM3D2.AutoTranslate.Plugin
 
 		public override void DeInit()
 		{
+			var pack = new TranslationProtocoll.Packet
+			{
+				method = TranslationProtocoll.PacketMethod.quit
+			};
+			TranslationProtocoll.SendPacket(pack, _stream);
 			_connection.Close();
 		}
 	}
