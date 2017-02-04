@@ -251,12 +251,6 @@ namespace CM3D2.AutoTranslate.Plugin
 
 			CacheTranslation(result);
 
-			if (!lab.isVisible)
-			{
-				Logger.Log($"Label {lab} no longer visible ({id})!",Level.Debug);
-				yield break;
-			}		
-
 			if (!result.Success)
 			{
 				Logger.Log($"Failed translation #{id} ({result.Text})!", Level.Warn);
