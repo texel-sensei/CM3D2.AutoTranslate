@@ -48,6 +48,7 @@ namespace OfflineTranslator
 			Program.Log($"Sending packet {str} ({size} bytes)");
 			outStream.Write(netSize, 0, netSize.Length);
 			outStream.Write(bytes, 0, bytes.Length);
+			outStream.Flush();
 		}
 
 
@@ -59,7 +60,8 @@ namespace OfflineTranslator
 			var size = System.Net.IPAddress.NetworkToHostOrder(BitConverter.ToInt32(sizeBuffBytes, 0));
 			Program.Log($"Read packetsize: {size}");
 			var _buffer = new byte[size];
-			inStream.Read(_buffer, 0, _buffer.Length);
+			var length = inStream.Read(_buffer, 0, _buffer.Length);
+			Program.Log($"Read {length} bytes (expect {size}).");
 			return Encoding.UTF8.GetString(_buffer);
 		}
 
