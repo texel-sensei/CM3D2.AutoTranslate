@@ -45,7 +45,7 @@ namespace OfflineTranslator
 
 			var size = bytes.Length;
 			var netSize = BitConverter.GetBytes(System.Net.IPAddress.HostToNetworkOrder(size));
-			Program.Log($"Sending packet {str} ({size} bytes)");
+			//Program.Log($"Sending packet {str} ({size} bytes)");
 			outStream.Write(netSize, 0, netSize.Length);
 			outStream.Write(bytes, 0, bytes.Length);
 			outStream.Flush();
@@ -60,22 +60,33 @@ namespace OfflineTranslator
 			if (l != 4)
 			{
 				Program.Log($"Got not right amount of bytes for size! Got {l} instead of {sizeBuffBytes.Length}");
+				return null;
 			}
 
 			var size = System.Net.IPAddress.NetworkToHostOrder(BitConverter.ToInt32(sizeBuffBytes, 0));
-			Program.Log($"Read packetsize: {size}");
+			//Program.Log($"Read packetsize: {size}");
+
 			var _buffer = new byte[size];
 			var length = inStream.Read(_buffer, 0, _buffer.Length);
-			Program.Log($"Read {length} bytes (expect {size}).");
+
+			if (length != size)
+			{
+				Program.Log($"Got too few bytes in packet! Got {length}, expected {size}");
+				return null;
+			}
+			
 			return Encoding.UTF8.GetString(_buffer);
 		}
 
 		public static  Packet ReadPacket(Stream stream)
 		{
-			Program.Log("Begin reading packet");
+			//Program.Log("Begin reading packet");
 			var str = ReadJsonObject(stream);
-
-			Program.Log(str);
+			if (str == null)
+			{
+				return null;
+			}
+			//Program.Log(str);
 
 			var pack = new Packet();
 			JsonConvert.PopulateObject(str, pack);

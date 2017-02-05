@@ -45,11 +45,11 @@ namespace OfflineTranslator
 						Log("Client quit.");
 						break;
 					}
-					Log($"Got packet #{pack.id} and text {pack.text}");
+					//Log($"Got packet #{pack.id} and text {pack.text}");
 					pack.method = TranslationProtocoll.PacketMethod.translation;
 
 					var translation = translator.Translate(pack.text);
-					Log($"Translation for #{pack.id} is {translation}");
+					Log($"Translation #{pack.id} is '{translation}'");
 					pack.translation = translation;
 					pack.text = null;
 					pack.success = translation != null;
