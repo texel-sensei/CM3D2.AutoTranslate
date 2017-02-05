@@ -1,8 +1,8 @@
 # CM3D2.AutoTranslate
-This is a plugin for UnityInjector for CM3D2 that catches all untranslated text and uses a machine translator to translate it. The result replaces then the ingame text. You can find the support thread in the Honfire forum [here](http://www.hongfire.com/forum/forum/hentai-lair/hf-modding-translation/custom-maid-3d-2-mods/5756478-plugin-automatic-google-translate-v1-1-0).
+This is a plugin for UnityInjector for CM3D2 that catches all untranslated text and uses a machine translator to translate it. The result replaces then the ingame text. You can find the support thread in the Hongfire forum [here](http://www.hongfire.com/forum/forum/hentai-lair/hf-modding-translation/custom-maid-3d-2-mods/5756478-plugin-automatic-google-translate-v1-1-0).
 
 ## Json Interface
-The plugin provides an tcp interface to provide your own translation support. Your translation program should listen for an tcp connection (default port: 9586). All translation requests are sent over one connection.
+The plugin provides an tcp interface to provide your own translation support. Your translation program should listen for a TCP connection (default port: 9586). All translation requests are sent over one connection.
 A packet consists of a 4 byte integer (in network byteorder) followed by a JSON string. The integer contains the size of the JSON string in bytes.
 The JSON can contain the following fields:
 
@@ -25,4 +25,4 @@ Your program translates the text and sends the answer. It is important, that the
   ```JSON
     {"id":0,"success":true,"method":"translation","translation":"But, it was added to a shop."}
   ```
-When the game is closed, it sends a last packet with method "quit"
+When the game is closed, it sends a last packet with method "quit" and closes the connection.
