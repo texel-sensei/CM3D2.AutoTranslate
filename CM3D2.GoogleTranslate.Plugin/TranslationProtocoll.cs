@@ -60,9 +60,17 @@ namespace CM3D2.AutoTranslate.Plugin
 			var size = bytes.Length;
 			var netSize = BitConverter.GetBytes(System.Net.IPAddress.HostToNetworkOrder(size));
 
-			outStream.Write(netSize, 0, netSize.Length);
+			/*outStream.Write(netSize, 0, netSize.Length);
 			outStream.Write(bytes, 0, bytes.Length);
-			outStream.Flush();
+			outStream.Flush();*/
+			outStream.BeginWrite(netSize, 0, netSize.Length, ar =>
+			{
+				outStream.EndWrite(ar);
+				outStream.BeginWrite(bytes, 0, bytes.Length, br =>
+				{
+					outStream.EndWrite(br);
+				}, null);
+			}, null);
 		}
 
 	public static void SendTranslationRequest(TranslationData data, Stream outStream)
@@ -86,19 +94,15 @@ namespace CM3D2.AutoTranslate.Plugin
 			public WaitForRead(Stream stream, byte[] buffer, int offset, int size)
 			{
 				_stream = stream;
-				Logger.Log("Begin reading", Level.Verbose);
-				/*
+				
 				stream.BeginRead(buffer, offset, size, ar =>
 				{
-					Logger.Log($"{ar.IsCompleted} {ar}");
-					Logger.Log("somethingsomething", Level.Debug);
 					GetReadBytes = _stream.EndRead(ar);
 					_finished = true;
 				}, this);
-				Logger.Log("after begin read");
-				*/
-				GetReadBytes = _stream.Read(buffer, offset, size);
-				_finished = true;
+				
+				//GetReadBytes = _stream.Read(buffer, offset, size);
+				//_finished = true;
 			}
 
 			public int GetReadBytes { get; private set; }
@@ -120,7 +124,6 @@ namespace CM3D2.AutoTranslate.Plugin
 			var sizeBuffBytes = new byte[4];
 
 			var waitSize = new WaitForRead(inStream, sizeBuffBytes, 0, sizeBuffBytes.Length);
-			Logger.Log("Waiting for size packet");
 			yield return waitSize;
 
 			if (waitSize.GetReadBytes != sizeBuffBytes.Length)
@@ -134,14 +137,13 @@ namespace CM3D2.AutoTranslate.Plugin
 			var _buffer = new byte[size];
 
 			var waitPack = new WaitForRead(inStream, _buffer, 0, _buffer.Length);
-			Logger.Log("Waiting for packet");
 			yield return waitPack;
 
 			Logger.Log($"Got Packet of size {size}. ", Level.Verbose);
 
 			if (waitPack.GetReadBytes != _buffer.Length)
 			{
-				Logger.Log($"Got too few bytes for packet! Expected {_buffer.Length}, Got {waitPack.GetReadBytes}");
+				Logger.Log($"Got too few bytes for packet! Expected {_buffer.Length}, Got {waitPack.GetReadBytes}", Level.Warn);
 				var text = Encoding.UTF8.GetString(_buffer, 0, waitPack.GetReadBytes);
 				Logger.LogError($"Only got text {text}");
 				yield break;
