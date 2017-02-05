@@ -25,12 +25,20 @@ namespace CM3D2.AutoTranslate.Plugin
 		public string TranslationFolder => Path.Combine(DataPathStrings, _translationFolder);
 		public string TranslationFilePath => Path.Combine(TranslationFolder, _translationFile);
 
+		enum CacheDumpFrequenzy
+		{
+			OnQuit,
+			Periodic,
+			Instant
+		}
 
 		private string _translationFile = "google_translated.txt";
 		private string _translationFolder = "Translation";
 		private bool _dumpCache = true;
 		private bool _pluginActive = true;
 		private string _activeTranslator = "Google";
+		private CacheDumpFrequenzy _cacheDumpFrequenzy = CacheDumpFrequenzy.OnQuit;
+		private int _cacheDumpPeriodicIntervall = 10;
 
 		private readonly Dictionary<string, string> _translationCache = new Dictionary<string, string>();
 		private Dictionary<string, string> _alreadyInFile;
@@ -88,6 +96,11 @@ namespace CM3D2.AutoTranslate.Plugin
 				StartCoroutine(HookTranslator());
 				LoadCacheFromDisk();
 				_alreadyInFile = new Dictionary<string, string>(_translationCache);
+
+				if (_dumpCache && _cacheDumpFrequenzy == CacheDumpFrequenzy.Periodic)
+				{
+					StartCoroutine(PeriodicDumpCache());
+				}
 			}
 			catch (Exception e)
 			{
@@ -106,6 +119,20 @@ namespace CM3D2.AutoTranslate.Plugin
 			return true;
 		}
 
+		private IEnumerator PeriodicDumpCache()
+		{
+			while (true)
+			{
+				yield return new WaitForSeconds(_cacheDumpPeriodicIntervall);
+				if (_alreadyInFile.Count == _translationCache.Count)
+				{
+					continue;
+				}
+				Logger.Log("Writing cache to HDD.", Level.Info);
+				SaveCacheToDisk();
+			}
+		}
+
 		private IEnumerator HookTranslator()
 		{
 			Logger.Log("Waiting for hook...",Level.Info);
@@ -120,6 +147,7 @@ namespace CM3D2.AutoTranslate.Plugin
 			{
 				File.AppendAllText(TranslationFilePath, line + Environment.NewLine);	
 			}
+			_alreadyInFile = new Dictionary<string, string>(_translationCache);
 		}
 
 		private void LoadCacheFromDisk()
@@ -178,6 +206,10 @@ namespace CM3D2.AutoTranslate.Plugin
 			cache.LoadValue("File", ref _translationFile);
 			cache.LoadValue("Folder", ref _translationFolder);
 			cache.LoadValue("WriteCacheToFile", ref _dumpCache);
+			cache.LoadValue("Frequenzy", ref _cacheDumpFrequenzy);
+			if(_cacheDumpFrequenzy == CacheDumpFrequenzy.Periodic) { 
+				cache.LoadValue("PeriodicIntervall", ref _cacheDumpPeriodicIntervall);
+			}
 		}
 
 		private static float get_ascii_percentage(string str)
@@ -267,6 +299,13 @@ namespace CM3D2.AutoTranslate.Plugin
 			if (!result.Success) return;
 
 			_translationCache[result.Text] = result.Translation;
+
+			if (_cacheDumpFrequenzy == CacheDumpFrequenzy.Instant && _dumpCache)
+			{
+				_alreadyInFile[result.Text] = result.Translation;
+				File.AppendAllText(TranslationFilePath,
+					$"{result.Text}\t{result.Translation}".Replace("\n", "") + Environment.NewLine);
+			}
 		}
 
 		public void OnApplicationQuit()
