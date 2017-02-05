@@ -11,15 +11,15 @@ namespace CM3D2.AutoTranslate.Plugin
 {
 	class GenericServerTranslationModule : TranslationModule
 	{
-		protected override string Section => "GenericNetworkTranslation";
+		public override string Section => "GeneralNetworkTranslation";
 
 		private string _host = "localhost";
 		private int _port = 9586;
 
 		private TcpClient _connection;
-		private BufferedStream _stream;
+		private Stream _stream;
 
-		private Dictionary<int, TranslationProtocoll.Packet> _arrivedTranslations = new Dictionary<int, TranslationProtocoll.Packet>();
+		private readonly Dictionary<int, TranslationProtocoll.Packet> _arrivedTranslations = new Dictionary<int, TranslationProtocoll.Packet>();
 		private int _openRequests = 0;
 
 		protected override void LoadConfig(CoreUtil.SectionLoader section)
@@ -33,11 +33,11 @@ namespace CM3D2.AutoTranslate.Plugin
 			try
 			{
 				_connection = new TcpClient(_host, _port);
-				_stream = new BufferedStream(_connection.GetStream());
+				_stream = _connection.GetStream();
 			}
 			catch (Exception e)
 			{
-				CoreUtil.LogError(e.Message);
+				Logger.LogError(e);
 				return false;
 			}
 			return true;
@@ -48,9 +48,11 @@ namespace CM3D2.AutoTranslate.Plugin
 			while (_openRequests > 0)
 			{
 				var pack = new TranslationProtocoll.Packet();
+				Logger.Log("Begin waiting for packet (collectPackets)");
+				Logger.Log($"Have {_openRequests} open requests:");
 				yield return TranslationProtocoll.ReadPacket(_stream, pack);
-				CoreUtil.Log($"Got data! Packet #{pack.id}", 0);
-				CoreUtil.Log(pack.text, 0);
+				Logger.Log($"Got data! Packet #{pack.id}", 0);
+				Logger.Log(pack.text, 0);
 				if (pack.method == TranslationProtocoll.PacketMethod.translation)
 				{
 					_openRequests--;
@@ -58,7 +60,6 @@ namespace CM3D2.AutoTranslate.Plugin
 				if(pack.id != null)
 					_arrivedTranslations.Add(pack.id.Value, pack);
 			}
-			yield break;
 		}
 
 		public override IEnumerator Translate(TranslationData data)
@@ -69,10 +70,13 @@ namespace CM3D2.AutoTranslate.Plugin
 
 			if (startCollecting)
 			{
+				Logger.Log("Starting collection coroutine");
 				StartCoroutine(CollectPackets());
 			}
 
 			yield return new WaitForTranslation(this, data.Id);
+
+			Logger.Log("Translation arrived");
 
 			var pack = _arrivedTranslations[data.Id];
 			TranslationProtocoll.ParsePacketForTranslation(pack, data);
@@ -94,6 +98,11 @@ namespace CM3D2.AutoTranslate.Plugin
 
 		public override void DeInit()
 		{
+			var pack = new TranslationProtocoll.Packet
+			{
+				method = TranslationProtocoll.PacketMethod.quit
+			};
+			TranslationProtocoll.SendPacket(pack, _stream);
 			_connection.Close();
 		}
 	}

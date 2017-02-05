@@ -2,6 +2,7 @@
 using System.Collections;
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using System.Reflection;
 using System.Runtime.InteropServices;
 using System.Text;
@@ -16,26 +17,28 @@ namespace CM3D2.AutoTranslate.Plugin
 {
 	
 	[PluginName(CoreUtil.PLUGIN_NAME)]
-	[PluginVersion("1.0.2")]
+	[PluginVersion("1.1.0")]
 	public class AutoTranslatePlugin : PluginBase
 	{
-		enum TranslatorID
-		{
-			Google,
-			Executable,
-			GenericServer
-		};
 
 		public string DataPathStrings => Path.Combine(this.DataPath, "Strings");
 		public string TranslationFolder => Path.Combine(DataPathStrings, _translationFolder);
 		public string TranslationFilePath => Path.Combine(TranslationFolder, _translationFile);
 
+		enum CacheDumpFrequenzy
+		{
+			OnQuit,
+			Periodic,
+			Instant
+		}
 
 		private string _translationFile = "google_translated.txt";
 		private string _translationFolder = "Translation";
 		private bool _dumpCache = true;
 		private bool _pluginActive = true;
-		private TranslatorID _activeTranslator;
+		private string _activeTranslator = "Google";
+		private CacheDumpFrequenzy _cacheDumpFrequenzy = CacheDumpFrequenzy.OnQuit;
+		private int _cacheDumpPeriodicIntervall = 10;
 
 		private readonly Dictionary<string, string> _translationCache = new Dictionary<string, string>();
 		private Dictionary<string, string> _alreadyInFile;
@@ -44,81 +47,98 @@ namespace CM3D2.AutoTranslate.Plugin
 	
 		public void Awake()
 		{
-			DontDestroyOnLoad(this);
-			CoreUtil.Log("Starting Plugin", 0);
-			LoadConfig();
-			if (!_pluginActive)
+			Logger.Init(this.DataPath);
+			try
 			{
-				CoreUtil.Log("Plugin is disabled.", 0);
+				DontDestroyOnLoad(this);
+				LoadConfig();
+				Logger.Log("Starting Plugin", Level.General);
+				if (!_pluginActive)
+				{
+					Logger.Log("Plugin is disabled.", Level.General);
+					if (CoreUtil.FinishLoadingConfig())
+					{
+						SaveConfig();
+					}
+					Destroy(this);
+					return;
+				}
+
+				var success = LoadTranslator();
+				if (!success)
+				{
+					Logger.LogError($"Failed to load Translation module '{_activeTranslator}'");
+					if (CoreUtil.FinishLoadingConfig())
+					{
+						SaveConfig();
+					}
+					Destroy(this);
+					return;
+				}
+
+				Translator.LoadConfig();
 				if (CoreUtil.FinishLoadingConfig())
 				{
 					SaveConfig();
 				}
-				Destroy(this);
-				return;
-			}
 
-			var success = LoadTranslator();
-			if (!success)
-			{
-				CoreUtil.LogError($"Failed to load Translation module '{_activeTranslator}'");
-				if (CoreUtil.FinishLoadingConfig())
+				Logger.Log($"Initializing Module {_activeTranslator}", Level.Info);
+				success = Translator.Init();
+				if (!success)
 				{
-					SaveConfig();
+					Logger.LogError($"Failed to load Translation module {_activeTranslator}");
+					Destroy(this);
+					return;
 				}
-				Destroy(this);
-				return;
-			}
 
-			Translator.LoadConfig();
-			if (CoreUtil.FinishLoadingConfig())
+
+				Logger.Log($"Using translation cache file @: {TranslationFilePath}", Level.Info);
+				StartCoroutine(HookTranslator());
+				LoadCacheFromDisk();
+				_alreadyInFile = new Dictionary<string, string>(_translationCache);
+
+				if (_dumpCache && _cacheDumpFrequenzy == CacheDumpFrequenzy.Periodic)
+				{
+					StartCoroutine(PeriodicDumpCache());
+				}
+			}
+			catch (Exception e)
 			{
-				SaveConfig();
+				Logger.LogError(e);
 			}
-
-			CoreUtil.Log($"Initializing Module {_activeTranslator}", 1);
-			success = Translator.Init();
-			if (!success)
-			{
-				CoreUtil.LogError($"Failed to load Translation module {_activeTranslator}");
-				Destroy(this);
-				return;
-			}
-
-
-			CoreUtil.Log($"Using translation cache file @: {TranslationFilePath}", 1);
-			StartCoroutine(HookTranslator());
-			LoadCacheFromDisk();
-			_alreadyInFile = new Dictionary<string, string>(_translationCache);
 		}
 
 		private bool LoadTranslator()
 		{
-			switch (_activeTranslator)
-			{
-				case TranslatorID.Google:
-					Translator = new GoogleTranslationModule();
-					break;
-				case TranslatorID.Executable:
-					Translator = new ExeTranslatorModule();
-					break;
-				case TranslatorID.GenericServer:
-					Translator = new GenericServerTranslationModule();
-					break;
-				default:
-					CoreUtil.LogError("Translator not implemented!");
-					return false;
+			Translator = TranslationModuleFactory.Create(_activeTranslator);
+			if(Translator == null) { 
+				Logger.LogError("Translator not implemented!");
+				return false;
 			}
 			Translator._plugin = this;
 			return true;
 		}
 
+		private IEnumerator PeriodicDumpCache()
+		{
+			while (true)
+			{
+				yield return new WaitForSeconds(_cacheDumpPeriodicIntervall);
+				if (_alreadyInFile.Count == _translationCache.Count)
+				{
+					continue;
+				}
+				Logger.Log("Writing cache to HDD.", Level.Info);
+				SaveCacheToDisk();
+			}
+		}
+
 		private IEnumerator HookTranslator()
 		{
-			CoreUtil.Log("Waiting for hook...",2);
+			Logger.Log("Waiting for hook...",Level.Info);
 			yield return new WaitForEndOfFrame();
 			Core.TranslateText += TextStreamHandleText;
-			CoreUtil.Log("Hooked!",2);	
+			Logger.Log("Hooked!",Level.Info);	
 		}
 
 		private void SaveCacheToDisk()
@@ -127,6 +147,7 @@ namespace CM3D2.AutoTranslate.Plugin
 			{
 				File.AppendAllText(TranslationFilePath, line + Environment.NewLine);	
 			}
+			_alreadyInFile = new Dictionary<string, string>(_translationCache);
 		}
 
 		private void LoadCacheFromDisk()
@@ -134,19 +155,33 @@ namespace CM3D2.AutoTranslate.Plugin
 
 			if (!Directory.Exists(TranslationFolder))
 			{
-				CoreUtil.Log($"Folder {TranslationFolder} does not exist, creating it.", 2);
+				Logger.Log($"Folder {TranslationFolder} does not exist, creating it.", Level.Info);
 				Directory.CreateDirectory(TranslationFolder);
 			}
 			if (!File.Exists(TranslationFilePath))
 			{
-				CoreUtil.Log($"Cache file {TranslationFilePath} does not exist, creating it.", 2);
+				Logger.Log($"Cache file {TranslationFilePath} does not exist, creating it.", Level.Info);
 				File.Create(TranslationFilePath);
 				return;
 			}
+			var lineNr = 1;
 			foreach (var line in File.ReadAllLines(TranslationFilePath))
 			{
 				var parts = line.Split('\t');
-				_translationCache[parts[0]] = parts[1];
+				if (parts.Length < 2)
+				{
+					Logger.Log($"Cache line (Line {lineNr}) is invalid! It contains no tab character!", Level.Warn);
+					Logger.Log($"Offending line is \"{line}\"", Level.Warn);
+				}
+				else if (parts.Length > 2)
+				{
+					Logger.Log($"Cache line (Line {lineNr}) is invalid! It contains more than one tab character!", Level.Warn);
+					Logger.Log($"Offending line is \"{line}\"", Level.Warn);
+				}
+				else { 
+					_translationCache[parts[0]] = parts[1];
+				}
+				lineNr++;
 			}
 		}
 
@@ -171,6 +206,10 @@ namespace CM3D2.AutoTranslate.Plugin
 			cache.LoadValue("File", ref _translationFile);
 			cache.LoadValue("Folder", ref _translationFolder);
 			cache.LoadValue("WriteCacheToFile", ref _dumpCache);
+			cache.LoadValue("Frequenzy", ref _cacheDumpFrequenzy);
+			if(_cacheDumpFrequenzy == CacheDumpFrequenzy.Periodic) { 
+				cache.LoadValue("PeriodicIntervall", ref _cacheDumpPeriodicIntervall);
+			}
 		}
 
 		private static float get_ascii_percentage(string str)
@@ -193,13 +232,13 @@ namespace CM3D2.AutoTranslate.Plugin
 
 			if (get_ascii_percentage(e.Text) > 0.8)
 			{
-				CoreUtil.Log("Is ascii, skipping.", 4);
+				Logger.Log($"{e.Text} is ascii, skipping.", Level.Verbose);
 				return e.Text;
 			}
 
 			var translationPlugin = (TranslationPlugin) FindObjectOfType(translationPluginClass);
 			if (translationPlugin == null)
-				CoreUtil.LogError("Couldn't find translation plugin");
+				Logger.LogError("Couldn't find translation plugin");
 
 			var str =
 				(string)
@@ -210,11 +249,11 @@ namespace CM3D2.AutoTranslate.Plugin
 						e
 					});
 
-			CoreUtil.Log("Translation Stream: " + str, 4);
+			Logger.Log("Translation Stream: " + str, Level.Verbose);
 			if (str != null)
 				return str;
 
-			CoreUtil.Log("\tFound no translation for: " + e.Text, 4);
+			Logger.Log("\tFound no translation for: " + e.Text, Level.Verbose);
 
 			
 
@@ -222,7 +261,7 @@ namespace CM3D2.AutoTranslate.Plugin
 			string translation;
 			if (_translationCache.TryGetValue(e.Text, out translation))
 			{
-				CoreUtil.Log("\tgot translation from cache", 4);
+				Logger.Log("\tgot translation from cache", Level.Verbose);
 				return translation;
 			}
 			StartCoroutine(DoTranslation(lab, e.Text));
@@ -238,21 +277,15 @@ namespace CM3D2.AutoTranslate.Plugin
 			result.Text = eText;
 			var id = _translationId++;
 			result.Id = id;
-			CoreUtil.Log($"Starting translation {id}!",3);
+			Logger.Log($"Starting translation {id}!",Level.Debug);
 			yield return StartCoroutine(Translator.Translate(result));
-			CoreUtil.Log($"Finished Translation {id}!",3);
+			Logger.Log($"Finished Translation {id}!",Level.Debug);
 
 			CacheTranslation(result);
 
-			if (!lab.isVisible)
-			{
-				CoreUtil.Log($"Label {lab} no longer visible ({id})!",3);
-				yield break;
-			}		
-
 			if (!result.Success)
 			{
-				CoreUtil.Log($"Failed translation #{id} ({result.Text})!", 2);
+				Logger.Log($"Failed translation #{id} ({result.Text})!", Level.Warn);
 				yield break;
 			}
 			
@@ -266,14 +299,28 @@ namespace CM3D2.AutoTranslate.Plugin
 			if (!result.Success) return;
 
 			_translationCache[result.Text] = result.Translation;
+
+			if (_cacheDumpFrequenzy == CacheDumpFrequenzy.Instant && _dumpCache)
+			{
+				_alreadyInFile[result.Text] = result.Translation;
+				File.AppendAllText(TranslationFilePath,
+					$"{result.Text}\t{result.Translation}".Replace("\n", "") + Environment.NewLine);
+			}
 		}
 
 		public void OnApplicationQuit()
 		{
-			Translator.DeInit();
-			if (_dumpCache) {
-				CoreUtil.Log("Saving Cache...",1);
-				SaveCacheToDisk();
+			try
+			{
+				Translator.DeInit();
+				if (_dumpCache) {
+					Logger.Log("Saving Cache...",Level.Info);
+					SaveCacheToDisk();
+				}
+			}
+			catch (Exception e)
+			{
+				Logger.LogError(e);
 			}
 		}
 	}

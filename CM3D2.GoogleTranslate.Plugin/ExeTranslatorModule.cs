@@ -7,9 +7,9 @@ using System.Text;
 
 namespace CM3D2.AutoTranslate.Plugin
 {
-	class ExeTranslatorModule : TranslationModule
+	internal class ExeTranslatorModule : TranslationModule
 	{
-		protected override string Section => "ExeTranslator";
+		public override string Section => "ExeTranslator";
 
 		private string _exeName = " ";
 
@@ -20,9 +20,9 @@ namespace CM3D2.AutoTranslate.Plugin
 
 		public override bool Init()
 		{
-			CoreUtil.LogError("Executable loading not yet supported!");
+			Logger.LogError("Executable loading not yet supported!");
 			return false;
-			CoreUtil.Log($"Loading '{_exeName}'", 2);
+			Logger.Log($"Loading '{_exeName}'", Level.Info);
 			Process p = new Process()
 			{
 				StartInfo = new ProcessStartInfo(_exeName)
@@ -34,9 +34,9 @@ namespace CM3D2.AutoTranslate.Plugin
 					Arguments = "Some Text",
 				}
 			};
-			p.OutputDataReceived += (sender, args) => CoreUtil.Log($"Got Data: {sender.ToString()}, {args.Data}", 2);
+			p.OutputDataReceived += (sender, args) => Logger.Log($"Got Data: {sender.ToString()}, {args.Data}", Level.Verbose);
 			p.Start();
-			CoreUtil.Log(p.ToString(), 2);
+			Logger.Log(p.ToString(), Level.Debug);
 			p.BeginOutputReadLine();
 			p.WaitForExit();
 			return true;

@@ -18,7 +18,7 @@ namespace CM3D2.AutoTranslate.Plugin
 
 	internal abstract class TranslationModule
 	{
-		protected abstract string Section { get; }
+		public abstract string Section { get; }
 		public AutoTranslatePlugin _plugin;
 
 		public void LoadConfig()

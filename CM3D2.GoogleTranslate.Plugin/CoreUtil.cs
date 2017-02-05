@@ -14,27 +14,6 @@ namespace CM3D2.AutoTranslate.Plugin
 		private static Dictionary<string,Dictionary<string, string>> _defaultValues = new Dictionary<string, Dictionary<string, string>>();
 		private static bool _needSaveConfig = false;
 
-		private static int _verbosity = 0;
-		private static bool _colorDebugOutput = false;
-
-		public static void Log(string msg, int level)
-		{
-			if (level < _verbosity)
-			{
-				var prev = SafeConsole.ForegroundColor;
-				if (_colorDebugOutput)
-				{
-					SafeConsole.ForegroundColor = ConsoleColor.Green;
-				}
-				var line = $"{PLUGIN_NAME}: {msg}";
-				Console.WriteLine(line);
-				if (_colorDebugOutput)
-				{
-					SafeConsole.ForegroundColor = prev;
-				}
-			}
-		}
-
 		public static void StartLoadingConfig(ExIni.IniFile pref)
 		{
 			_preferences = pref;
@@ -44,18 +23,12 @@ namespace CM3D2.AutoTranslate.Plugin
 		private static void LoadConfig()
 		{
 			var section = LoadSection("Debug");
-			section.LoadValue("VerbosityLevel", ref _verbosity);
-			section.LoadValue("ColorConsoleOutput", ref _colorDebugOutput);
+			Logger.LoadConfig(section);
 		}
 
 		public static bool FinishLoadingConfig()
 		{
 			return _needSaveConfig;
-		}
-
-		public static void LogError(string msg)
-		{
-			Debug.LogError($"{PLUGIN_NAME}: {msg}");
 		}
 
 		public static T ChangeType<T>(string obj)
@@ -66,7 +39,6 @@ namespace CM3D2.AutoTranslate.Plugin
 			}
 			return (T)Convert.ChangeType(obj, typeof(T));
 		}
-
 
 		public class SectionLoader
 		{
@@ -92,7 +64,7 @@ namespace CM3D2.AutoTranslate.Plugin
 				}
 
 				var entry = _preferences[_section][key];
-				Log($"Loading config value '{_section}'/'{key}' with default '{val}', got: '{entry.Value}'", 7);
+				Logger.Log($"Loading config value '{_section}'/'{key}' with default '{val}', got: '{entry.Value}'", Level.Debug);
 				if (entry.Value == null || entry.Value.Trim() == "")
 				{
 					entry.Value = val.ToString();
@@ -102,11 +74,15 @@ namespace CM3D2.AutoTranslate.Plugin
 				{
 					val = ChangeType<T>(entry.Value);
 				}
-				catch (Exception)
+				catch (Exception e)
 				{
 					val = ChangeType<T>(_defaults[key]);
 					_needSaveConfig = true;
-					LogError($"Invalid value '{val.ToString()}' for Config value '{_section}'/'{key}', resetting to default.");
+					Logger.Log(
+						$"Invalid value '{val.ToString()}' for Config value '{_section}'/'{key}', resetting to default.",
+						Level.Warn
+					);
+					Logger.LogException(e, Level.Warn);
 				}
 			}
 		}
