@@ -15,6 +15,7 @@ namespace OfflineTranslator
 		protected UnmanagedDllLoader Loader = new UnmanagedDllLoader();
 		protected string DllPath { get; private set; }
 		protected abstract string DllName { get; }
+		public string FullDllPath => Path.Combine(DllPath, DllName);
 
 		public virtual string LoadPathFromRegistry()
 		{
@@ -22,19 +23,26 @@ namespace OfflineTranslator
 		}
 
 		protected abstract string GetLocalPath();
-		protected abstract void LoadFunctions();
+		protected abstract bool LoadFunctions();
 
-		public void Init()
+		public bool Init()
 		{
 			DllPath = LoadPathFromRegistry() ?? GetLocalPath();
 
-			// TODO: Error handling
-			Loader.LoadDll(Path.Combine(DllPath, DllName));
-			LoadFunctions();
-			OnInit();
+			if (!File.Exists(FullDllPath))
+			{
+				Program.Log($"Tried to load '{FullDllPath}' but it does not exist.");
+				return false;
+			}
+
+			var succ = Loader.LoadDll(FullDllPath);
+			if (!succ)
+				return false;
+			succ = LoadFunctions();
+			return succ && OnInit();
 		}
 
-		protected abstract void OnInit();
+		protected abstract bool OnInit();
 		public abstract string Translate(string toTranslate);
 
 		public static IntPtr ConvertStringToNative(string managedString, int codepage)

@@ -1,7 +1,9 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using System.Runtime.InteropServices;
+using System.Runtime.Remoting.Messaging;
 using System.Text;
 using System.Threading.Tasks;
 
@@ -48,29 +50,73 @@ namespace OfflineTranslator
 			return builder.ToString();
 		}
 
+		public override string LoadPathFromRegistry()
+		{
+			var path = (string) Microsoft.Win32.Registry.GetValue(@"HKEY_LOCAL_MACHINE\SOFTWARE\LogoMedia\LEC Power Translator 15\Configuration",
+				"ApplicationPath",null);
+
+			if (path == null)
+				return null;
+
+			var up = Directory.GetParent(path.TrimEnd('\\'));
+	
+			const string subpath = @"Nova\JaEn\";
+			var p = Path.Combine(up.FullName, subpath);
+
+			return p;
+		}
+
 		protected override string GetLocalPath()
 		{
-			const string path = @"D:\Program Files (x86)\Power Translator 15\Nova\JaEn";
-			return path;
+			const string subpath = @"Plugin\Nova\JaEn";
+
+			return Path.Combine(Directory.GetCurrentDirectory(), subpath);
 		}
 
-		protected override void LoadFunctions()
+		protected override bool LoadFunctions()
 		{
-			Loader.LoadFunction("eg_end", out end);
-			Loader.LoadFunction("eg_translate_multi", out translate);
-			Loader.LoadFunction("eg_init", out init);
-			Loader.LoadFunction("eg_init2", out init2);
+			try
+			{
+				Loader.LoadFunction("eg_end", out end);
+				Loader.LoadFunction("eg_translate_multi", out translate);
+			}
+			catch (Exception e)
+			{
+				Program.Log("Failed to load LEC!");
+				Program.Log(e);
+				return false;
+			}
+
+			try
+			{
+				Loader.LoadFunction("eg_init2", out init2);
+			}
+			catch
+			{
+				try
+				{
+					Loader.LoadFunction("eg_init", out init);
+				}
+				catch
+				{
+					return false;
+				}
+			}
+
+			return true;
 		}
 
-		protected override void OnInit()
+		protected override bool OnInit()
 		{
-			init2(DllPath, 0);
+			var succ = init2?.Invoke(DllPath, 0);
+			var inited = succ ?? init(DllPath);
+			return inited == 0;
 		}
 
 		protected override void Dispose(bool disposing)
 		{
 			if(disposing)
-				end();
+				end?.Invoke();
 			base.Dispose(disposing);
 		}
 	}
