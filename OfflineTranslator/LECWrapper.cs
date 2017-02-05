@@ -27,8 +27,49 @@ namespace OfflineTranslator
 		private eg_init init;
 		private eg_init2 init2;
 
+		private string PreprocessString(string str)
+		{
+			var builder = new StringBuilder(str.Length);
+
+			foreach (var c in str)
+			{
+				char o;
+
+				switch (c)
+				{
+					case '『':
+					case '｢':
+					case '「':
+						o = '['; break;
+					case '』':
+					case '｣':
+					case '」':
+						o = ']'; break;
+					case '≪':
+					case '（':
+						o = '('; break;
+					case '≫':
+					case '）':
+						o = ')'; break;
+					case '…':
+						o = ' '; break;
+					case '：':
+						o = '￤'; break;
+					case '・':
+						o = '.'; break;
+					default:
+						o = c;
+						break;
+				}
+				builder.Append(c);
+			}
+
+			return builder.ToString();
+		}
+
 		public override string Translate(string toTranslate)
 		{
+			toTranslate = PreprocessString(toTranslate);
 			var size = toTranslate.Length * 3;
 			var builder = new StringBuilder();
 			int translatedSize;
