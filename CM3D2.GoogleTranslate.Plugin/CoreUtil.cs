@@ -1,8 +1,10 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Reflection;
 using System.Text;
 using UnityEngine;
+using UnityInjector;
 using UnityInjector.ConsoleUtil;
 
 namespace CM3D2.AutoTranslate.Plugin

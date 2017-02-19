@@ -38,6 +38,7 @@
     <Compile Include="ExeTranslatorModule.cs" />
     <Compile Include="GenericServerTranslationModule.cs" />
     <Compile Include="GoogleTranslationModule.cs" />
+    <Compile Include="HookHelper.cs" />
     <Compile Include="Logger.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="SimpleJSON.cs" />
@@ -54,6 +55,12 @@
     </Reference>
     <Reference Include="CM3D2.Translation.Plugin">
       <HintPath>..\..\..\..\..\..\misc\tmp\Custom Maid 3D2\Game\CM3D2\UnityInjector\CM3D2.Translation.Plugin.dll</HintPath>
+    </Reference>
+    <Reference Include="CM3D2.TranslationPlus.Hook">
+      <HintPath>..\..\..\..\..\..\misc\tmp\Custom Maid 3D2\Game\CM3D2\Sybaris\Plugins\Managed\CM3D2.TranslationPlus.Hook.dll</HintPath>
+    </Reference>
+    <Reference Include="CM3D2.TranslationPlus.Plugin">
+      <HintPath>..\..\..\..\..\..\misc\tmp\Custom Maid 3D2\Game\CM3D2\Sybaris\Plugins\UnityInjector\CM3D2.TranslationPlus.Plugin.dll</HintPath>
     </Reference>
     <Reference Include="ExIni">
       <HintPath>..\..\..\..\..\..\misc\tmp\Custom Maid 3D2\Game\CM3D2\CM3D2VRx64_Data\Managed\ExIni.dll</HintPath>
