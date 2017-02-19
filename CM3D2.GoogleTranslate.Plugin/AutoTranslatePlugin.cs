@@ -2,20 +2,14 @@
 using System.Collections;
 using System.Collections.Generic;
 using System.IO;
-using System.Linq;
 using System.Reflection;
-using System.Runtime.InteropServices;
-using System.Text;
-using CM3D2.Translation;
-using CM3D2.Translation.Plugin;
 using UnityEngine;
 using UnityInjector;
 using UnityInjector.Attributes;
-using SimpleJSON;
 
 namespace CM3D2.AutoTranslate.Plugin
 {
-	
+
 	[PluginName(CoreUtil.PLUGIN_NAME)]
 	[PluginVersion("1.1.0")]
 	public class AutoTranslatePlugin : PluginBase
@@ -42,9 +36,11 @@ namespace CM3D2.AutoTranslate.Plugin
 
 		private readonly Dictionary<string, string> _translationCache = new Dictionary<string, string>();
 		private Dictionary<string, string> _alreadyInFile;
-	
+
 		internal TranslationModule Translator { get; set; }
-	
+
+		
+
 		public void Awake()
 		{
 			Logger.Init(this.DataPath);
@@ -82,6 +78,14 @@ namespace CM3D2.AutoTranslate.Plugin
 					SaveConfig();
 				}
 
+				HookHelper.DetectTranslationPlugin();
+				if (HookHelper.TranslationPlugin == HookHelper.ParentTranslationPlugin.None)
+				{
+					Logger.LogError("Found neither Unified Translation Loader nor TranslationPlus! Make sure one of them is installed");
+					Destroy(this);
+					return;
+				}
+
 				Logger.Log($"Initializing Module {_activeTranslator}", Level.Info);
 				success = Translator.Init();
 				if (!success)
@@ -91,9 +95,9 @@ namespace CM3D2.AutoTranslate.Plugin
 					return;
 				}
 
+				StartCoroutine(HookTranslator());
 
 				Logger.Log($"Using translation cache file @: {TranslationFilePath}", Level.Info);
-				StartCoroutine(HookTranslator());
 				LoadCacheFromDisk();
 				_alreadyInFile = new Dictionary<string, string>(_translationCache);
 
@@ -137,8 +141,20 @@ namespace CM3D2.AutoTranslate.Plugin
 		{
 			Logger.Log("Waiting for hook...",Level.Info);
 			yield return new WaitForEndOfFrame();
-			Core.TranslateText += TextStreamHandleText;
-			Logger.Log("Hooked!",Level.Info);	
+
+			try
+			{
+				var methodInfo = this.GetType().GetMethod("TextStreamHandleText",
+					BindingFlags.NonPublic | BindingFlags.Instance);
+				HookHelper.HookTranslationEvent(this, methodInfo);
+			}
+			catch (Exception e)
+			{
+				Logger.LogError("Failed hook!",e);
+				Destroy(this);
+				yield break;
+			}
+			Logger.Log("Hook successful!",Level.Info);	
 		}
 
 		private void SaveCacheToDisk()
@@ -224,48 +240,36 @@ namespace CM3D2.AutoTranslate.Plugin
 		}
 
 
-		private string TextStreamHandleText(object sender, StringTranslationEventArgs e)
+		private string TextStreamHandleText(object sender, object eventArgs)
 		{
-			if (e.Handled || e.Text == null || e.Text.Trim().Length == 0)
+			var text = HookHelper.GetTextFromEvent(eventArgs);
+			if (text == null || text.Trim().Length == 0)
 				return null;
-			var translationPluginClass = typeof(TranslationPlugin);
-
-			if (get_ascii_percentage(e.Text) > 0.8)
+			
+			if (get_ascii_percentage(text) > 0.8)
 			{
-				Logger.Log($"{e.Text} is ascii, skipping.", Level.Verbose);
-				return e.Text;
+				Logger.Log($"{text} is ascii, skipping.", Level.Verbose);
+				return text;
 			}
-
-			var translationPlugin = (TranslationPlugin) FindObjectOfType(translationPluginClass);
-			if (translationPlugin == null)
-				Logger.LogError("Couldn't find translation plugin");
-
-			var str =
-				(string)
-				translationPluginClass.GetMethod("OnTranslateString", BindingFlags.Instance | BindingFlags.NonPublic)
-					.Invoke(translationPlugin, new object[2]
-					{
-						sender,
-						e
-					});
-
+			var str = HookHelper.CallOriginalTranslator(sender, eventArgs);
+			
 			Logger.Log("Translation Stream: " + str, Level.Verbose);
 			if (str != null)
 				return str;
 
-			Logger.Log("\tFound no translation for: " + e.Text, Level.Verbose);
+			Logger.Log("\tFound no translation for: " + text, Level.Verbose);
 
 			
 
 			var lab = sender as UILabel;
 			string translation;
-			if (_translationCache.TryGetValue(e.Text, out translation))
+			if (_translationCache.TryGetValue(text, out translation))
 			{
 				Logger.Log("\tgot translation from cache", Level.Verbose);
 				return translation;
 			}
-			StartCoroutine(DoTranslation(lab, e.Text));
-			return e.Text;
+			StartCoroutine(DoTranslation(lab, text));
+			return text;
 		}
 
 		private int _translationId = 0;

@@ -55,6 +55,7 @@ namespace CM3D2.AutoTranslate.Plugin
 		{
 			
 			var str = JsonFx.Json.JsonWriter.Serialize(pack);
+			Logger.Log(str);
 			var bytes = Encoding.UTF8.GetBytes(str);
 
 			var size = bytes.Length;

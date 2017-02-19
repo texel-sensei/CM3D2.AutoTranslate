@@ -42,7 +42,7 @@ namespace OfflineTranslator
 		{
 			var str = JsonConvert.SerializeObject(data);
 			var bytes = Encoding.UTF8.GetBytes(str);
-
+			Program.Log(str);
 			var size = bytes.Length;
 			var netSize = BitConverter.GetBytes(System.Net.IPAddress.HostToNetworkOrder(size));
 			//Program.Log($"Sending packet {str} ({size} bytes)");
