@@ -53,6 +53,12 @@ namespace CM3D2.AutoTranslate.Plugin
 
 		public static void Init(string path)
 		{
+			if (!File.Exists(path))
+			{
+				// assume sybaris
+				Log("Data path does not exist, assume sybaris");
+				path = Path.Combine(path, @"../../Sybaris/Plugins/UnityInjector/Config/");
+			}
 			_dataPath = path;
 			try
 			{
