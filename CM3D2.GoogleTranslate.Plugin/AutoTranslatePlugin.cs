@@ -35,6 +35,7 @@ namespace CM3D2.AutoTranslate.Plugin
 		private int _cacheDumpPeriodicIntervall = 10;
 
 		private readonly Dictionary<string, TranslationData> _translationCache = new Dictionary<string, TranslationData>();
+		private readonly Dictionary<UILabel, int> _mostRecentTranslations = new Dictionary<UILabel, int>();
 		private int _unsavedTranslations = 0;
 
 		internal TranslationModule Translator { get; set; }
@@ -307,6 +308,8 @@ namespace CM3D2.AutoTranslate.Plugin
 			var id = result.Id;
 			Logger.Log($"Starting translation {id}!",Level.Debug);
 
+			_mostRecentTranslations[lab] = id;
+
 			yield return StartCoroutine(Translator.Translate(result));
 
 			Logger.Log($"Finished Translation {id}!",Level.Debug);
@@ -318,10 +321,17 @@ namespace CM3D2.AutoTranslate.Plugin
 				Logger.Log($"Failed translation #{id} ({result.Text})!", Level.Warn);
 				yield break;
 			}
-			
-			lab.text = result.Translation;
-			lab.useFloatSpacing = false;
-			lab.spacingX = -1;
+
+			if (_mostRecentTranslations[lab] == id)
+			{
+				lab.text = result.Translation;
+				lab.useFloatSpacing = false;
+				lab.spacingX = -1;
+			}
+			else
+			{
+				Logger.Log("A newer translation request for this label exists.");
+			}
 		}
 
 		private void CacheTranslation(TranslationData result)
