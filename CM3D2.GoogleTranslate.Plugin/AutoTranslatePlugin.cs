@@ -158,7 +158,8 @@ namespace CM3D2.AutoTranslate.Plugin
 		{
 			foreach (var data in GetUnsavedTranslations())
 			{
-				File.AppendAllText(TranslationFilePath, data.GetCacheLine());	
+				File.AppendAllText(TranslationFilePath, data.GetCacheLine());
+				data.SavedOnDisk = true;
 			}
 			_unsavedTranslations = 0;
 		}
@@ -197,6 +198,7 @@ namespace CM3D2.AutoTranslate.Plugin
 					{
 						Text = parts[1],
 						Translation = parts[0],
+						State = TranslationState.Finished,
 						SavedOnDisk = true
 					};
 				}
@@ -244,6 +246,8 @@ namespace CM3D2.AutoTranslate.Plugin
 		}
 
 
+		// This function is called via reflection
+		// ReSharper disable once UnusedMember.Local
 		private string TextStreamHandleText(object sender, object eventArgs)
 		{
 			var text = HookHelper.GetTextFromEvent(eventArgs);
@@ -262,8 +266,6 @@ namespace CM3D2.AutoTranslate.Plugin
 				return str;
 
 			Logger.Log("\tFound no translation for: " + text, Level.Verbose);
-
-			
 
 			var lab = sender as UILabel;
 			TranslationData translation;
