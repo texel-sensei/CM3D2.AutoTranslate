@@ -34,6 +34,12 @@ namespace CM3D2.AutoTranslate.Plugin
 		private CacheDumpFrequenzy _cacheDumpFrequenzy = CacheDumpFrequenzy.OnQuit;
 		private int _cacheDumpPeriodicIntervall = 10;
 
+		private int _maxConcurrentTranslationRequests = 5;
+		private int _runningTranslationRequests = 0;
+		private TranslationData[] newRequests; // all requests that need to be started this frame
+		private TranslationQueue _queue = new TranslationQueue();
+
+		// Caching
 		private readonly Dictionary<string, TranslationData> _translationCache = new Dictionary<string, TranslationData>();
 		private readonly Dictionary<UILabel, int> _mostRecentTranslations = new Dictionary<UILabel, int>();
 		private int _unsavedTranslations = 0;
@@ -58,6 +64,8 @@ namespace CM3D2.AutoTranslate.Plugin
 					Destroy(this);
 					return;
 				}
+
+				newRequests = new TranslationData[_maxConcurrentTranslationRequests];
 
 				var success = LoadTranslator();
 				if (!success)
@@ -224,6 +232,7 @@ namespace CM3D2.AutoTranslate.Plugin
 			var general = CoreUtil.LoadSection("General");
 			general.LoadValue("PluginActive", ref _pluginActive);
 			general.LoadValue("TranslationMethod", ref _activeTranslator);
+			general.LoadValue("MaxConcurrentTranslations", ref _maxConcurrentTranslationRequests);
 
 			var cache = CoreUtil.LoadSection("Cache");
 			cache.LoadValue("File", ref _translationFile);
@@ -290,41 +299,78 @@ namespace CM3D2.AutoTranslate.Plugin
 				}
 			}
 
-			StartCoroutine(DoTranslation(lab, text));
-			return text;
-		}
-
-
-		private IEnumerator DoTranslation(UILabel lab, string eText)
-		{
-			var result = new TranslationData
+			var request = new TranslationData
 			{
 				Id = TranslationData.AllocateId(),
-				Text = eText,
+				Text = text,
 				State = TranslationState.InProgress,
 				Label = lab
 			};
+			Logger.Log($"Queueing translation #{request.Id}");
+			_queue.AddRequest(request);
 
-			var id = result.Id;
+			return null;
+		}
+
+		public void Update()
+		{
+			if (_runningTranslationRequests >= _maxConcurrentTranslationRequests)
+				return;
+			if (_queue.Count() == 0)
+				return;
+
+			var n = _maxConcurrentTranslationRequests - _runningTranslationRequests;
+			if (n <= 0)
+			{
+				Logger.LogError($"Somhow got less than 0 requests! ({n})");
+				return;
+			}
+			var p = 0;
+			foreach (var request in _queue.GetRequests(n))
+			{
+				newRequests[p] = request;
+				p++;
+			}
+			Logger.Log($"Starting {p} new requests");
+			for (var i = 0; i < p; i++)
+			{
+				var request = newRequests[i];
+
+				_queue.RemoveRequest(request);
+				_runningTranslationRequests++;
+				newRequests[i] = null;
+
+				StartCoroutine(DoTranslation(request));
+			}
+			Logger.Log("Finished Update.");
+		}
+
+		private IEnumerator DoTranslation(TranslationData request)
+		{
+			var lab = request.Label;
+			var id = request.Id;
 			Logger.Log($"Starting translation {id}!",Level.Debug);
 
 			_mostRecentTranslations[lab] = id;
 
-			yield return StartCoroutine(Translator.Translate(result));
+			yield return Translator.Translate(request);
 
 			Logger.Log($"Finished Translation {id}!",Level.Debug);
 
-			CacheTranslation(result);
+			CacheTranslation(request);
 
-			if (result.State != TranslationState.Finished)
+			
+			_runningTranslationRequests--;
+
+			if (request.State != TranslationState.Finished)
 			{
-				Logger.Log($"Failed translation #{id} ({result.Text})!", Level.Warn);
+				Logger.Log($"Failed translation #{id} ({request.Text})!", Level.Warn);
 				yield break;
 			}
 
 			if (_mostRecentTranslations[lab] == id)
 			{
-				lab.text = result.Translation;
+				lab.text = request.Translation;
 				lab.useFloatSpacing = false;
 				lab.spacingX = -1;
 			}

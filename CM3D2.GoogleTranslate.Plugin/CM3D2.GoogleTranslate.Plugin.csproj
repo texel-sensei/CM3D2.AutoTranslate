@@ -45,6 +45,7 @@
     <Compile Include="TranslationModule.cs" />
     <Compile Include="TranslationModuleFactory.cs" />
     <Compile Include="TranslationProtocoll.cs" />
+    <Compile Include="TranslationQueue.cs" />
   </ItemGroup>
   <ItemGroup>
     <Reference Include="Assembly-CSharp">
