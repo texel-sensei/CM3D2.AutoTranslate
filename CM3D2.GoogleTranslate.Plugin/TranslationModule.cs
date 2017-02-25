@@ -8,12 +8,37 @@ using UnityEngine;
 namespace CM3D2.AutoTranslate.Plugin
 {
 
+	internal enum TranslationState
+	{
+		None,
+		InProgress,
+		Finished,
+		Failed
+	}
+
 	internal class TranslationData
 	{
+		private static int MaxID = 0;
 		public string Text { get; set; }
 		public string Translation { get; set; }
-		public bool Success { get; set; }
 		public int Id { get; set; }
+		public UILabel Label { get; set; }
+		public bool SavedOnDisk { get; set; }
+		public TranslationState State { get; set; }
+
+		public static int AllocateId()
+		{
+			return ++MaxID;
+		}
+
+		public string GetCacheLine()
+		{
+			if (State != TranslationState.Finished)
+			{
+				throw new InvalidOperationException($"Tried to get translation cache line of failed translation! (id {Id})");
+			}
+			return $"{Text}\t{Translation}".Replace("\n", "") + Environment.NewLine;
+		}
 	}
 
 	internal abstract class TranslationModule
