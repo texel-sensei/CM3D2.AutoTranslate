@@ -114,6 +114,16 @@ namespace CM3D2.AutoTranslate.Plugin
 			var type = FindType(info, info.HookHint, true);
 			var eventInfo = type.GetEvent(info.EventName);
 
+			// Remove all existing event handlers
+			var fieldInfo = type.GetField(info.EventName, BindingFlags.NonPublic | BindingFlags.Static);
+			var del = fieldInfo.GetValue(null) as Delegate;
+			foreach (var h in del.GetInvocationList())
+			{
+				eventInfo.RemoveEventHandler(null, h);
+			}
+
+			//eventInfo.RemoveEventHandler(null, del);
+
 			// Create and add delegate for own handler
 			var handler = Delegate.CreateDelegate(eventInfo.EventHandlerType, sender, methodInfo);
 			eventInfo.AddEventHandler(null, handler);
