@@ -11,7 +11,7 @@ namespace CM3D2.AutoTranslate.Plugin
 {
 
 	[PluginName(CoreUtil.PLUGIN_NAME)]
-	[PluginVersion("1.1.1")]
+	[PluginVersion("1.1.2")]
 	public class AutoTranslatePlugin : PluginBase
 	{
 
@@ -34,12 +34,11 @@ namespace CM3D2.AutoTranslate.Plugin
 		private CacheDumpFrequenzy _cacheDumpFrequenzy = CacheDumpFrequenzy.OnQuit;
 		private int _cacheDumpPeriodicIntervall = 10;
 
-		private readonly Dictionary<string, string> _translationCache = new Dictionary<string, string>();
-		private Dictionary<string, string> _alreadyInFile;
+		private readonly Dictionary<string, TranslationData> _translationCache = new Dictionary<string, TranslationData>();
+		private readonly Dictionary<UILabel, int> _mostRecentTranslations = new Dictionary<UILabel, int>();
+		private int _unsavedTranslations = 0;
 
 		internal TranslationModule Translator { get; set; }
-
-		
 
 		public void Awake()
 		{
@@ -99,8 +98,7 @@ namespace CM3D2.AutoTranslate.Plugin
 
 				Logger.Log($"Using translation cache file @: {TranslationFilePath}", Level.Info);
 				LoadCacheFromDisk();
-				_alreadyInFile = new Dictionary<string, string>(_translationCache);
-
+			
 				if (_dumpCache && _cacheDumpFrequenzy == CacheDumpFrequenzy.Periodic)
 				{
 					StartCoroutine(PeriodicDumpCache());
@@ -128,7 +126,7 @@ namespace CM3D2.AutoTranslate.Plugin
 			while (true)
 			{
 				yield return new WaitForSeconds(_cacheDumpPeriodicIntervall);
-				if (_alreadyInFile.Count == _translationCache.Count)
+				if (_unsavedTranslations == 0)
 				{
 					continue;
 				}
@@ -159,11 +157,12 @@ namespace CM3D2.AutoTranslate.Plugin
 
 		private void SaveCacheToDisk()
 		{
-			foreach (var line in GetTranslationLines())
+			foreach (var data in GetUnsavedTranslations())
 			{
-				File.AppendAllText(TranslationFilePath, line + Environment.NewLine);	
+				File.AppendAllText(TranslationFilePath, data.GetCacheLine());
+				data.SavedOnDisk = true;
 			}
-			_alreadyInFile = new Dictionary<string, string>(_translationCache);
+			_unsavedTranslations = 0;
 		}
 
 		private void LoadCacheFromDisk()
@@ -194,19 +193,27 @@ namespace CM3D2.AutoTranslate.Plugin
 					Logger.Log($"Cache line (Line {lineNr}) is invalid! It contains more than one tab character!", Level.Warn);
 					Logger.Log($"Offending line is \"{line}\"", Level.Warn);
 				}
-				else { 
-					_translationCache[parts[0]] = parts[1];
+				else
+				{
+					_translationCache[parts[0]] = new TranslationData()
+					{
+						Text = parts[1],
+						Translation = parts[0],
+						State = TranslationState.Finished,
+						SavedOnDisk = true
+					};
 				}
 				lineNr++;
 			}
 		}
 
-		private IEnumerable<string> GetTranslationLines()
+		private IEnumerable<TranslationData> GetUnsavedTranslations()
 		{
 			foreach (var item in _translationCache)
 			{
-				if (_alreadyInFile.ContainsKey(item.Key)) continue;
-				yield return $"{item.Key}\t{item.Value}".Replace("\n","");
+				var r = item.Value;
+				if (r.SavedOnDisk || r.State != TranslationState.Finished) continue;
+				yield return item.Value;
 			}
 		}
 
@@ -240,76 +247,113 @@ namespace CM3D2.AutoTranslate.Plugin
 		}
 
 
+		// This function is called via reflection
+		// ReSharper disable once UnusedMember.Local
 		private string TextStreamHandleText(object sender, object eventArgs)
 		{
 			var text = HookHelper.GetTextFromEvent(eventArgs);
 			if (text == null || text.Trim().Length == 0)
 				return null;
-			
+			Logger.Log("Translation stream: " + text, Level.Verbose);
 			if (get_ascii_percentage(text) > 0.8)
 			{
 				Logger.Log($"{text} is ascii, skipping.", Level.Verbose);
 				return text;
 			}
-			var str = HookHelper.CallOriginalTranslator(sender, eventArgs);
-			
-			Logger.Log("Translation Stream: " + str, Level.Verbose);
-			if (str != null)
-				return str;
 
-			Logger.Log("\tFound no translation for: " + text, Level.Verbose);
+			var str = HookHelper.CallOriginalTranslator(sender, eventArgs);
+			if (str != null)
+			{
+				Logger.Log($"Got existing Translation from plugin '{str}'", Level.Debug);
+				if (get_ascii_percentage(str) > 0.5)
+				{
+					return str;
+				}
+				Logger.Log("Translation from TranslationLoader is not translated!", Level.Warn);
+			}
+			else
+			{
+				Logger.Log("\tFound no translation for: " + text, Level.Verbose);
+			}
 
 			
 
 			var lab = sender as UILabel;
-			string translation;
+			TranslationData translation;
 			if (_translationCache.TryGetValue(text, out translation))
 			{
-				Logger.Log("\tgot translation from cache", Level.Verbose);
-				return translation;
+				Logger.Log("\tFound translation in cache.", Level.Verbose);
+				switch (translation.State)
+				{
+					case TranslationState.Finished:
+						Logger.Log("\tIs finished translation.", Level.Verbose);
+						return translation.Translation;
+					case TranslationState.InProgress:
+						Logger.Log("\tTranslation is still in progress.",Level.Verbose);
+						return null;
+					case TranslationState.None:
+						Logger.Log("\tTranslation has state none!", Level.Warn);
+						return null;
+					default:
+						Logger.LogError("Invalid translation state!");
+						return null;
+				}
 			}
+
 			StartCoroutine(DoTranslation(lab, text));
 			return text;
 		}
 
-		private int _translationId = 0;
 
 		private IEnumerator DoTranslation(UILabel lab, string eText)
 		{
-			
-			var result = new TranslationData();
-			result.Text = eText;
-			var id = _translationId++;
-			result.Id = id;
+			var result = new TranslationData
+			{
+				Id = TranslationData.AllocateId(),
+				Text = eText,
+				State = TranslationState.InProgress,
+				Label = lab
+			};
+
+			var id = result.Id;
 			Logger.Log($"Starting translation {id}!",Level.Debug);
+
+			_mostRecentTranslations[lab] = id;
+
 			yield return StartCoroutine(Translator.Translate(result));
+
 			Logger.Log($"Finished Translation {id}!",Level.Debug);
 
 			CacheTranslation(result);
 
-			if (!result.Success)
+			if (result.State != TranslationState.Finished)
 			{
 				Logger.Log($"Failed translation #{id} ({result.Text})!", Level.Warn);
 				yield break;
 			}
-			
-			lab.text = result.Translation;
-			lab.useFloatSpacing = false;
-			lab.spacingX = -1;
+
+			if (_mostRecentTranslations[lab] == id)
+			{
+				lab.text = result.Translation;
+				lab.useFloatSpacing = false;
+				lab.spacingX = -1;
+			}
+			else
+			{
+				Logger.Log("A newer translation request for this label exists.");
+			}
 		}
 
 		private void CacheTranslation(TranslationData result)
 		{
-			if (!result.Success) return;
+			if (result.State != TranslationState.Finished) return;
 
-			_translationCache[result.Text] = result.Translation;
+			_translationCache[result.Text] = result;
 
-			if (_cacheDumpFrequenzy == CacheDumpFrequenzy.Instant && _dumpCache)
-			{
-				_alreadyInFile[result.Text] = result.Translation;
-				File.AppendAllText(TranslationFilePath,
-					$"{result.Text}\t{result.Translation}".Replace("\n", "") + Environment.NewLine);
-			}
+			if (_cacheDumpFrequenzy != CacheDumpFrequenzy.Instant || !_dumpCache) return;
+
+			result.SavedOnDisk = true;
+			File.AppendAllText(TranslationFilePath,result.GetCacheLine());
 		}
 
 		public void OnApplicationQuit()

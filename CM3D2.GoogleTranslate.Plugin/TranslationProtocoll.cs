@@ -39,13 +39,13 @@ namespace CM3D2.AutoTranslate.Plugin
 				return false;
 			}
 
-			d.Success = p.success ?? false;
-			if (!d.Success)
+			d.State = (p.success ?? false) ? TranslationState.Finished : TranslationState.Failed;
+			if (d.State != TranslationState.Finished)
 				return true;
 			d.Translation = p.translation ?? "";
 			if (d.Translation == "")
 			{
-				d.Success = false;
+				d.State = TranslationState.Failed;
 				return false;
 			}
 			return true;

@@ -71,7 +71,7 @@ namespace CM3D2.AutoTranslate.Plugin
 			toCulture = toCulture.ToLower();
 
 			translation.Text = text;
-			translation.Success = false;
+			translation.State = TranslationState.Failed;
 
 			// normalize the culture in case something like en-us was passed 
 			// retrieve only en since Google doesn't support sub-locales
@@ -107,7 +107,7 @@ namespace CM3D2.AutoTranslate.Plugin
 			Logger.Log($"Got Translation from google: {result}", Level.Debug);
 
 			translation.Translation = result;
-			translation.Success = true;
+			translation.State = TranslationState.Finished;
 		}
 	}
 }
