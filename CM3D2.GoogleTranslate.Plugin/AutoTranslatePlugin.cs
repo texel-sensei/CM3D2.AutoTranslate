@@ -254,17 +254,18 @@ namespace CM3D2.AutoTranslate.Plugin
 			var text = HookHelper.GetTextFromEvent(eventArgs);
 			if (text == null || text.Trim().Length == 0)
 				return null;
-			
+			Logger.Log("Translation stream: " + text, Level.Verbose);
 			if (get_ascii_percentage(text) > 0.8)
 			{
 				Logger.Log($"{text} is ascii, skipping.", Level.Verbose);
 				return text;
 			}
+
 			var str = HookHelper.CallOriginalTranslator(sender, eventArgs);
-			
-			Logger.Log("Translation Stream: " + str, Level.Verbose);
-			if (str != null)
+			if (str != null) { 
+				Logger.Log($"Got existing Translation from plugin '{str}'", Level.Debug);
 				return str;
+			}
 
 			Logger.Log("\tFound no translation for: " + text, Level.Verbose);
 
