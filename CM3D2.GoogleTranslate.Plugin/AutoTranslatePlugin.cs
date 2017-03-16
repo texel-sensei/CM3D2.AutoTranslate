@@ -262,12 +262,21 @@ namespace CM3D2.AutoTranslate.Plugin
 			}
 
 			var str = HookHelper.CallOriginalTranslator(sender, eventArgs);
-			if (str != null) { 
+			if (str != null)
+			{
 				Logger.Log($"Got existing Translation from plugin '{str}'", Level.Debug);
-				return str;
+				if (get_ascii_percentage(str) > 0.5)
+				{
+					return str;
+				}
+				Logger.Log("Translation from TranslationLoader is not translated!", Level.Warn);
+			}
+			else
+			{
+				Logger.Log("\tFound no translation for: " + text, Level.Verbose);
 			}
 
-			Logger.Log("\tFound no translation for: " + text, Level.Verbose);
+			
 
 			var lab = sender as UILabel;
 			TranslationData translation;
