@@ -61,5 +61,10 @@ namespace CM3D2.AutoTranslate.Plugin
 		{
 			return _plugin.StartCoroutine(e);
 		}
+
+		public CoroutineEx CreateCoroutineEx(IEnumerator e)
+		{
+			return new CoroutineEx(_plugin, e);
+		}
 	}
 }

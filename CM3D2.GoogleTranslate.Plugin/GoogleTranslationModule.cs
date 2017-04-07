@@ -16,7 +16,28 @@ namespace CM3D2.AutoTranslate.Plugin
 		public override bool Init()
 		{
 			// Do Nothing
+			StartCoroutine(Test());
 			return true;
+		}
+
+		private IEnumerator Test()
+		{
+			var dat = new TranslationData()
+			{
+				Id = 0,
+				Text = "Hallo Welt"
+			};
+			var cd = CreateCoroutineEx(TranslateGoogle(dat.Text, "de", "en", dat));
+			yield return cd.coroutine;
+			try
+			{
+				cd.Check();
+				Logger.Log("Google seems OK", Level.Debug);
+			}
+			catch (Exception e)
+			{
+				Logger.Log(e);
+			}
 		}
 
 		protected override void LoadConfig(CoreUtil.SectionLoader section)
@@ -26,7 +47,13 @@ namespace CM3D2.AutoTranslate.Plugin
 
 		public override IEnumerator Translate(TranslationData data)
 		{
-			return TranslateGoogle(data.Text, "ja", _targetLanguage, data);
+			var cd = CreateCoroutineEx(TranslateGoogle(data.Text, "ja", _targetLanguage, data));
+			yield return cd.coroutine;
+			if (cd.GetException() != null)
+			{
+				Logger.LogException(cd.GetException(), Level.Warn);
+				data.State = TranslationState.Failed;
+			}
 		}
 
 		public override void DeInit()
@@ -36,6 +63,7 @@ namespace CM3D2.AutoTranslate.Plugin
 
 		private static string ExtractTranslationFromGoogleString(string input)
 		{
+			Logger.Log(input);
 			var data = JSON.Parse(input);
 			var lineBuilder = new StringBuilder(input.Length);
 			foreach (JSONNode entry in data.AsArray[0].AsArray)
