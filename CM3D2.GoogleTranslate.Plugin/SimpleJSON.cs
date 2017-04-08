@@ -312,6 +312,11 @@ namespace SimpleJSON
 				return new JSONData(flag);
 			}
 
+			if (token == "null")
+			{
+				return new JSONData(0);
+			}
+
 			throw new NotImplementedException(token);
 		}
 

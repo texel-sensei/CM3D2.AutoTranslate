@@ -35,6 +35,7 @@
   <ItemGroup>
     <Compile Include="AutoTranslatePlugin.cs" />
     <Compile Include="CoreUtil.cs" />
+    <Compile Include="CoroutineEx.cs" />
     <Compile Include="ExeTranslatorModule.cs" />
     <Compile Include="GenericServerTranslationModule.cs" />
     <Compile Include="GoogleTranslationModule.cs" />
