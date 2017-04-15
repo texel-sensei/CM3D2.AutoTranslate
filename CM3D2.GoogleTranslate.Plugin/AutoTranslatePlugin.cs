@@ -11,7 +11,7 @@ namespace CM3D2.AutoTranslate.Plugin
 {
 
 	[PluginName(CoreUtil.PLUGIN_NAME)]
-	[PluginVersion("1.1.3")]
+	[PluginVersion("1.2.0")]
 	public class AutoTranslatePlugin : PluginBase
 	{
 
@@ -33,12 +33,17 @@ namespace CM3D2.AutoTranslate.Plugin
 		private string _activeTranslator = "Google";
 		private CacheDumpFrequenzy _cacheDumpFrequenzy = CacheDumpFrequenzy.OnQuit;
 		private int _cacheDumpPeriodicIntervall = 10;
+		private string _toggleButton = "f10";
 
 		private readonly Dictionary<string, TranslationData> _translationCache = new Dictionary<string, TranslationData>();
 		private readonly Dictionary<UILabel, int> _mostRecentTranslations = new Dictionary<UILabel, int>();
 		private int _unsavedTranslations = 0;
 
+		private bool _doTranslations = true;
+
 		internal TranslationModule Translator { get; set; }
+
+		private TextPreprocessor _preprocessor = new TextPreprocessor();
 
 		public void Awake()
 		{
@@ -72,6 +77,7 @@ namespace CM3D2.AutoTranslate.Plugin
 				}
 
 				Translator.LoadConfig();
+				_preprocessor.LoadConfig();
 				if (CoreUtil.FinishLoadingConfig())
 				{
 					SaveConfig();
@@ -103,10 +109,24 @@ namespace CM3D2.AutoTranslate.Plugin
 				{
 					StartCoroutine(PeriodicDumpCache());
 				}
+
+				if (_preprocessor.Init(DataPath))
+				{
+					Logger.Log("Successfully loaded text preprocessor", Level.Info);
+				}
 			}
 			catch (Exception e)
 			{
 				Logger.LogError(e);
+			}
+		}
+
+		public void Update()
+		{
+			if (Input.GetKeyDown(_toggleButton))
+			{
+				_doTranslations = !_doTranslations;
+				Logger.Log("Translations are " + (_doTranslations ? "enabled" : "disabled"), Level.General);
 			}
 		}
 
@@ -223,6 +243,7 @@ namespace CM3D2.AutoTranslate.Plugin
 
 			var general = CoreUtil.LoadSection("General");
 			general.LoadValue("PluginActive", ref _pluginActive);
+			general.LoadValue("ToggleTranslationKey", ref _toggleButton);
 			general.LoadValue("TranslationMethod", ref _activeTranslator);
 
 			var cache = CoreUtil.LoadSection("Cache");
@@ -254,17 +275,15 @@ namespace CM3D2.AutoTranslate.Plugin
 			var text = HookHelper.GetTextFromEvent(eventArgs);
 			if (text == null || text.Trim().Length == 0)
 				return null;
-			Logger.Log("Translation stream: " + text, Level.Verbose);
 			if (get_ascii_percentage(text) > 0.8)
 			{
-				Logger.Log($"{text} is ascii, skipping.", Level.Verbose);
 				return text;
 			}
 
 			var str = HookHelper.CallOriginalTranslator(sender, eventArgs);
 			if (str != null)
 			{
-				Logger.Log($"Got existing Translation from plugin '{str}'", Level.Debug);
+				Logger.Log($"Got existing Translation from plugin '{str}'", Level.Verbose);
 				if (get_ascii_percentage(str) > 0.5)
 				{
 					return str;
@@ -276,7 +295,7 @@ namespace CM3D2.AutoTranslate.Plugin
 				Logger.Log("\tFound no translation for: " + text, Level.Verbose);
 			}
 
-			
+			if (!_doTranslations) return null;
 
 			var lab = sender as UILabel;
 			TranslationData translation;
@@ -286,14 +305,16 @@ namespace CM3D2.AutoTranslate.Plugin
 				switch (translation.State)
 				{
 					case TranslationState.Finished:
-						Logger.Log("\tIs finished translation.", Level.Verbose);
 						return translation.Translation;
 					case TranslationState.InProgress:
-						Logger.Log("\tTranslation is still in progress.",Level.Verbose);
+						Logger.Log("\tTranslation is still in progress.",Level.Debug);
 						return null;
 					case TranslationState.None:
 						Logger.Log("\tTranslation has state none!", Level.Warn);
 						return null;
+					case TranslationState.Failed:
+						Logger.Log("\tTranslation failed before! Retrying...", Level.Warn);
+						break;
 					default:
 						Logger.LogError("Invalid translation state!");
 						return null;
@@ -310,7 +331,8 @@ namespace CM3D2.AutoTranslate.Plugin
 			var result = new TranslationData
 			{
 				Id = TranslationData.AllocateId(),
-				Text = eText,
+				Text = _preprocessor.Preprocess(eText),
+				OriginalText =  eText,
 				State = TranslationState.InProgress,
 				Label = lab
 			};
@@ -348,7 +370,7 @@ namespace CM3D2.AutoTranslate.Plugin
 		{
 			if (result.State != TranslationState.Finished) return;
 
-			_translationCache[result.Text] = result;
+			_translationCache[result.OriginalText] = result;
 
 			if (_cacheDumpFrequenzy != CacheDumpFrequenzy.Instant || !_dumpCache) return;
 

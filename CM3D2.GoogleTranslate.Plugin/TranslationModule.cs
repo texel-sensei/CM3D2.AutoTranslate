@@ -20,6 +20,7 @@ namespace CM3D2.AutoTranslate.Plugin
 	{
 		private static int MaxID = 0;
 		public string Text { get; set; }
+		public string OriginalText { get; set; }
 		public string Translation { get; set; }
 		public int Id { get; set; }
 		public UILabel Label { get; set; }

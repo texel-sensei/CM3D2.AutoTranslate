@@ -54,7 +54,9 @@ namespace CM3D2.AutoTranslate.Plugin
 			{
 				_section = section;
 				_preferences = pref;
-				_defaultValues[_section] = _defaults = new Dictionary<string, string>();
+				if(!_defaultValues.TryGetValue(_section, out _defaults)) { 
+					_defaultValues[_section] = _defaults = new Dictionary<string, string>();
+				}
 			}
 
 			public void LoadValue<T>(string key, ref T val)
