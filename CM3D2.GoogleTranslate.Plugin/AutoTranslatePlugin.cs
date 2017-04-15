@@ -43,6 +43,8 @@ namespace CM3D2.AutoTranslate.Plugin
 
 		internal TranslationModule Translator { get; set; }
 
+		private TextPreprocessor _preprocessor = new TextPreprocessor();
+
 		public void Awake()
 		{
 			Logger.Init(this.DataPath);
@@ -105,6 +107,11 @@ namespace CM3D2.AutoTranslate.Plugin
 				if (_dumpCache && _cacheDumpFrequenzy == CacheDumpFrequenzy.Periodic)
 				{
 					StartCoroutine(PeriodicDumpCache());
+				}
+
+				if (_preprocessor.Init(DataPath))
+				{
+					Logger.Log("Successfully loaded text preprocessor", Level.Info);
 				}
 			}
 			catch (Exception e)
@@ -246,6 +253,8 @@ namespace CM3D2.AutoTranslate.Plugin
 			if(_cacheDumpFrequenzy == CacheDumpFrequenzy.Periodic) { 
 				cache.LoadValue("PeriodicIntervall", ref _cacheDumpPeriodicIntervall);
 			}
+
+			_preprocessor.LoadConfig(general);
 		}
 
 		private static float get_ascii_percentage(string str)
@@ -320,6 +329,7 @@ namespace CM3D2.AutoTranslate.Plugin
 
 		private IEnumerator DoTranslation(UILabel lab, string eText)
 		{
+			eText = _preprocessor.Preprocess(eText);
 			var result = new TranslationData
 			{
 				Id = TranslationData.AllocateId(),

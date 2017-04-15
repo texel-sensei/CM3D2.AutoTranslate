@@ -43,6 +43,7 @@
     <Compile Include="Logger.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="SimpleJSON.cs" />
+    <Compile Include="TextPreprocessor.cs" />
     <Compile Include="TranslationModule.cs" />
     <Compile Include="TranslationModuleFactory.cs" />
     <Compile Include="TranslationProtocoll.cs" />
