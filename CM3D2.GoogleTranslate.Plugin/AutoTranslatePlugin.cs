@@ -33,10 +33,13 @@ namespace CM3D2.AutoTranslate.Plugin
 		private string _activeTranslator = "Google";
 		private CacheDumpFrequenzy _cacheDumpFrequenzy = CacheDumpFrequenzy.OnQuit;
 		private int _cacheDumpPeriodicIntervall = 10;
+		private string _toggleButton = "f10";
 
 		private readonly Dictionary<string, TranslationData> _translationCache = new Dictionary<string, TranslationData>();
 		private readonly Dictionary<UILabel, int> _mostRecentTranslations = new Dictionary<UILabel, int>();
 		private int _unsavedTranslations = 0;
+
+		private bool _doTranslations = true;
 
 		internal TranslationModule Translator { get; set; }
 
@@ -107,6 +110,15 @@ namespace CM3D2.AutoTranslate.Plugin
 			catch (Exception e)
 			{
 				Logger.LogError(e);
+			}
+		}
+
+		public void Update()
+		{
+			if (Input.GetKeyDown(_toggleButton))
+			{
+				_doTranslations = !_doTranslations;
+				Logger.Log("Translations are " + (_doTranslations ? "enabled" : "disabled"), Level.General);
 			}
 		}
 
@@ -223,6 +235,7 @@ namespace CM3D2.AutoTranslate.Plugin
 
 			var general = CoreUtil.LoadSection("General");
 			general.LoadValue("PluginActive", ref _pluginActive);
+			general.LoadValue("ToggleTranslationKey", ref _toggleButton);
 			general.LoadValue("TranslationMethod", ref _activeTranslator);
 
 			var cache = CoreUtil.LoadSection("Cache");
@@ -276,7 +289,7 @@ namespace CM3D2.AutoTranslate.Plugin
 				Logger.Log("\tFound no translation for: " + text, Level.Verbose);
 			}
 
-			
+			if (!_doTranslations) return null;
 
 			var lab = sender as UILabel;
 			TranslationData translation;
