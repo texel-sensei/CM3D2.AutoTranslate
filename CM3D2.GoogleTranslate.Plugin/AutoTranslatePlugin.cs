@@ -328,11 +328,11 @@ namespace CM3D2.AutoTranslate.Plugin
 
 		private IEnumerator DoTranslation(UILabel lab, string eText)
 		{
-			eText = _preprocessor.Preprocess(eText);
 			var result = new TranslationData
 			{
 				Id = TranslationData.AllocateId(),
-				Text = eText,
+				Text = _preprocessor.Preprocess(eText),
+				OriginalText =  eText,
 				State = TranslationState.InProgress,
 				Label = lab
 			};
@@ -370,7 +370,7 @@ namespace CM3D2.AutoTranslate.Plugin
 		{
 			if (result.State != TranslationState.Finished) return;
 
-			_translationCache[result.Text] = result;
+			_translationCache[result.OriginalText] = result;
 
 			if (_cacheDumpFrequenzy != CacheDumpFrequenzy.Instant || !_dumpCache) return;
 
