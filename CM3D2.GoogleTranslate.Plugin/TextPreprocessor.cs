@@ -6,21 +6,32 @@ using System.Text;
 
 namespace CM3D2.AutoTranslate.Plugin
 {
-	class TextPreprocessor
+	public class TextPreprocessor
 	{
 		private readonly Dictionary<char, string> _textReplacements = new Dictionary<char, string>();
 
 		private string _replacementsFile = "AutoTranslateTextSubstitutions.txt";
-		private bool _valid = false;
+
+		public bool Valid { get; private set; } = false;
 
 		public bool Init(string datapath)
 		{
-			_valid = LoadReplacementFile(Path.Combine(datapath, _replacementsFile));
-			return _valid;
+			Valid = LoadReplacementFile(Path.Combine(datapath, _replacementsFile));
+			return Valid;
 		}
 
-		public void LoadConfig(CoreUtil.SectionLoader section)
+		public void AddReplacements(Dictionary<char, string> repls)
 		{
+			foreach (var repl in repls)
+			{
+				_textReplacements.Add(repl.Key, repl.Value);
+			}
+			if (_textReplacements.Count > 0) Valid = true;
+		}
+
+		public void LoadConfig()
+		{
+			var section = CoreUtil.LoadSection("General");
 			section.LoadValue("SubstitutionsFile", ref _replacementsFile);
 		}
 
@@ -56,7 +67,7 @@ namespace CM3D2.AutoTranslate.Plugin
 
 		public string Preprocess(string input)
 		{
-			if (!_valid) return input;
+			if (!Valid) return input;
 
 			var sb = new StringBuilder(input.Length * 2);
 

@@ -77,6 +77,7 @@ namespace CM3D2.AutoTranslate.Plugin
 				}
 
 				Translator.LoadConfig();
+				_preprocessor.LoadConfig();
 				if (CoreUtil.FinishLoadingConfig())
 				{
 					SaveConfig();
@@ -253,8 +254,6 @@ namespace CM3D2.AutoTranslate.Plugin
 			if(_cacheDumpFrequenzy == CacheDumpFrequenzy.Periodic) { 
 				cache.LoadValue("PeriodicIntervall", ref _cacheDumpPeriodicIntervall);
 			}
-
-			_preprocessor.LoadConfig(general);
 		}
 
 		private static float get_ascii_percentage(string str)
