@@ -267,17 +267,15 @@ namespace CM3D2.AutoTranslate.Plugin
 			var text = HookHelper.GetTextFromEvent(eventArgs);
 			if (text == null || text.Trim().Length == 0)
 				return null;
-			Logger.Log("Translation stream: " + text, Level.Verbose);
 			if (get_ascii_percentage(text) > 0.8)
 			{
-				Logger.Log($"{text} is ascii, skipping.", Level.Verbose);
 				return text;
 			}
 
 			var str = HookHelper.CallOriginalTranslator(sender, eventArgs);
 			if (str != null)
 			{
-				Logger.Log($"Got existing Translation from plugin '{str}'", Level.Debug);
+				Logger.Log($"Got existing Translation from plugin '{str}'", Level.Verbose);
 				if (get_ascii_percentage(str) > 0.5)
 				{
 					return str;
@@ -299,14 +297,16 @@ namespace CM3D2.AutoTranslate.Plugin
 				switch (translation.State)
 				{
 					case TranslationState.Finished:
-						Logger.Log("\tIs finished translation.", Level.Verbose);
 						return translation.Translation;
 					case TranslationState.InProgress:
-						Logger.Log("\tTranslation is still in progress.",Level.Verbose);
+						Logger.Log("\tTranslation is still in progress.",Level.Debug);
 						return null;
 					case TranslationState.None:
 						Logger.Log("\tTranslation has state none!", Level.Warn);
 						return null;
+					case TranslationState.Failed:
+						Logger.Log("\tTranslation failed before! Retrying...", Level.Warn);
+						break;
 					default:
 						Logger.LogError("Invalid translation state!");
 						return null;

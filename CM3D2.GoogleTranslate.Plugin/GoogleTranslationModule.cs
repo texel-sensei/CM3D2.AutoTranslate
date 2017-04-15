@@ -63,7 +63,6 @@ namespace CM3D2.AutoTranslate.Plugin
 
 		private static string ExtractTranslationFromGoogleString(string input)
 		{
-			Logger.Log(input);
 			var data = JSON.Parse(input);
 			var lineBuilder = new StringBuilder(input.Length);
 			foreach (JSONNode entry in data.AsArray[0].AsArray)
