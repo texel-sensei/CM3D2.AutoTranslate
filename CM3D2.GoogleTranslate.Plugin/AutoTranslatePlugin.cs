@@ -11,7 +11,7 @@ namespace CM3D2.AutoTranslate.Plugin
 {
 
 	[PluginName(CoreUtil.PLUGIN_NAME)]
-	[PluginVersion("1.2.0")]
+	[PluginVersion("1.2.1")]
 	public class AutoTranslatePlugin : PluginBase
 	{
 
