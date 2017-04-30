@@ -80,7 +80,7 @@ namespace CM3D2.AutoTranslate.Plugin
 			var pack = new Packet
 			{
 				method = PacketMethod.translate,
-				text = data.Text,
+				text = data.ProcessedText,
 				id = data.Id
 			};
 

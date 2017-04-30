@@ -25,9 +25,9 @@ namespace CM3D2.AutoTranslate.Plugin
 			var dat = new TranslationData()
 			{
 				Id = 0,
-				Text = "Hallo Welt"
+				ProcessedText = "Hallo Welt"
 			};
-			var cd = CreateCoroutineEx(TranslateGoogle(dat.Text, "de", "en", dat));
+			var cd = CreateCoroutineEx(TranslateGoogle(dat.ProcessedText, "de", "en", dat));
 			yield return cd.coroutine;
 			try
 			{
@@ -47,7 +47,7 @@ namespace CM3D2.AutoTranslate.Plugin
 
 		public override IEnumerator Translate(TranslationData data)
 		{
-			var cd = CreateCoroutineEx(TranslateGoogle(data.Text, "ja", _targetLanguage, data));
+			var cd = CreateCoroutineEx(TranslateGoogle(data.ProcessedText, "ja", _targetLanguage, data));
 			yield return cd.coroutine;
 			if (cd.GetException() != null)
 			{
@@ -97,7 +97,7 @@ namespace CM3D2.AutoTranslate.Plugin
 			fromCulture = fromCulture.ToLower();
 			toCulture = toCulture.ToLower();
 
-			translation.Text = text;
+			translation.ProcessedText = text;
 			translation.State = TranslationState.Failed;
 
 			// normalize the culture in case something like en-us was passed 

@@ -217,7 +217,8 @@ namespace CM3D2.AutoTranslate.Plugin
 				{
 					_translationCache[parts[0]] = new TranslationData()
 					{
-						Text = parts[1],
+						OriginalText = parts[1],
+						ProcessedText = parts[1],
 						Translation = parts[0],
 						State = TranslationState.Finished,
 						SavedOnDisk = true
@@ -331,7 +332,7 @@ namespace CM3D2.AutoTranslate.Plugin
 			var result = new TranslationData
 			{
 				Id = TranslationData.AllocateId(),
-				Text = _preprocessor.Preprocess(eText),
+				ProcessedText = _preprocessor.Preprocess(eText),
 				OriginalText =  eText,
 				State = TranslationState.InProgress,
 				Label = lab
@@ -350,7 +351,7 @@ namespace CM3D2.AutoTranslate.Plugin
 
 			if (result.State != TranslationState.Finished)
 			{
-				Logger.Log($"Failed translation #{id} ({result.Text})!", Level.Warn);
+				Logger.Log($"Failed translation #{id} ({result.OriginalText})!", Level.Warn);
 				yield break;
 			}
 

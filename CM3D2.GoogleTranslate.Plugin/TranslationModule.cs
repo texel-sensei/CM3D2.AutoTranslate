@@ -19,7 +19,7 @@ namespace CM3D2.AutoTranslate.Plugin
 	internal class TranslationData
 	{
 		private static int MaxID = 0;
-		public string Text { get; set; }
+		public string ProcessedText { get; set; }
 		public string OriginalText { get; set; }
 		public string Translation { get; set; }
 		public int Id { get; set; }
@@ -38,7 +38,7 @@ namespace CM3D2.AutoTranslate.Plugin
 			{
 				throw new InvalidOperationException($"Tried to get translation cache line of failed translation! (id {Id})");
 			}
-			return $"{Text}\t{Translation}".Replace("\n", "") + Environment.NewLine;
+			return $"{OriginalText}\t{Translation}".Replace("\n", "") + Environment.NewLine;
 		}
 	}
 
