@@ -217,9 +217,9 @@ namespace CM3D2.AutoTranslate.Plugin
 				{
 					_translationCache[parts[0]] = new TranslationData()
 					{
-						OriginalText = parts[1],
-						ProcessedText = parts[1],
-						Translation = parts[0],
+						OriginalText = parts[0],
+						ProcessedText = parts[0],
+						Translation = parts[1],
 						State = TranslationState.Finished,
 						SavedOnDisk = true
 					};
