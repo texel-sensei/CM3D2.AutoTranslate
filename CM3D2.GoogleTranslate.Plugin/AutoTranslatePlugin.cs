@@ -260,12 +260,16 @@ namespace CM3D2.AutoTranslate.Plugin
 		private static float get_ascii_percentage(string str)
 		{
 			int num = 0;
+			int check_len = 0;
 			foreach (var ch in str)
 			{
-				if (ch >= 0 && ch <= sbyte.MaxValue)
-					++num;
+				if(!char.IsWhiteSpace(ch)) {
+					check_len++;
+					if (ch >= 0 && ch <= sbyte.MaxValue)
+						++num;
+				}
 			}
-			return num / (float) str.Length;
+			return num / (float) check_len;
 		}
 
 
