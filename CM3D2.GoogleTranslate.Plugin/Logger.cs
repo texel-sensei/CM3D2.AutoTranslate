@@ -131,7 +131,7 @@ namespace CM3D2.AutoTranslate.Plugin
 
 		private static string FormatMessage(object msg, Level level)
 		{
-			return $"[{CoreUtil.PLUGIN_NAME}] [{level.ToString()}]: {msg}";
+			return $"[{CoreUtil.PLUGIN_NAME}] [{CoreUtil.PLUGIN_VERSION}] [{level.ToString()}]: {msg}";
 		}
 
 		private static void WriteLog(string msg, Level l)
