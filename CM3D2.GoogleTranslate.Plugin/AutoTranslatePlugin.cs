@@ -3,6 +3,7 @@ using System.Collections;
 using System.Collections.Generic;
 using System.IO;
 using System.Reflection;
+using System.Security.Cryptography;
 using UnityEngine;
 using UnityInjector;
 using UnityInjector.Attributes;
@@ -47,7 +48,7 @@ namespace CM3D2.AutoTranslate.Plugin
 
 		public void Awake()
 		{
-			Logger.Init(this.DataPath);
+			Logger.Init(this.DataPath, Preferences);
 			try
 			{
 				DontDestroyOnLoad(this);
@@ -285,6 +286,7 @@ namespace CM3D2.AutoTranslate.Plugin
 				return text;
 			}
 
+            Logger.Log($"Trying {HookHelper.TranslationPlugin}", Level.Verbose);
 			var str = HookHelper.CallOriginalTranslator(sender, eventArgs);
 			if (str != null)
 			{
@@ -297,7 +299,7 @@ namespace CM3D2.AutoTranslate.Plugin
 			}
 			else
 			{
-				Logger.Log("\tFound no translation for: " + text, Level.Verbose);
+				Logger.Log("\tOriginal Plugin has no translation: " + text, Level.Verbose);
 			}
 
 			if (!_doTranslations) return null;
@@ -373,7 +375,11 @@ namespace CM3D2.AutoTranslate.Plugin
 
 		private void CacheTranslation(TranslationData result)
 		{
-			if (result.State != TranslationState.Finished) return;
+		    if (result.State != TranslationState.Finished)
+		    {
+                Logger.Log($"Trying to cache unfinised translation #{result.Id}!", Level.Warn);
+		        return;
+		    }
 
 			_translationCache[result.OriginalText] = result;
 

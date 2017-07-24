@@ -51,9 +51,21 @@ namespace CM3D2.AutoTranslate.Plugin
 			}
 		}
 
-		public static void Init(string path)
+		public static void Init(string path, ExIni.IniFile pref)
 		{
-			if (!File.Exists(path))
+		    try
+		    {
+		        var v = pref["Debug"]["VerbosityLevel"];
+		        Verbosity = CoreUtil.ChangeType<int>(v.Value);
+		        var c = pref["Debug"]["ColorConsoleOutput"];
+		        ColorOutput = CoreUtil.ChangeType<bool>(c.Value);
+		    }
+		    catch (Exception)
+		    {
+		        // ignore exceptions
+		    }
+
+            if (!File.Exists(path))
 			{
 				// assume sybaris
 				Log("Data path does not exist, assume sybaris");
