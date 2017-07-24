@@ -11,7 +11,7 @@ namespace CM3D2.AutoTranslate.Plugin
 {
 
 	[PluginName(CoreUtil.PLUGIN_NAME)]
-	[PluginVersion("1.2.2")]
+	[PluginVersion(CoreUtil.PLUGIN_VERSION)]
 	public class AutoTranslatePlugin : PluginBase
 	{
 
@@ -52,7 +52,7 @@ namespace CM3D2.AutoTranslate.Plugin
 			{
 				DontDestroyOnLoad(this);
 				LoadConfig();
-				Logger.Log("Starting Plugin", Level.General);
+				Logger.Log($"Starting {CoreUtil.PLUGIN_NAME} v{CoreUtil.PLUGIN_VERSION}", Level.General);
 				if (!_pluginActive)
 				{
 					Logger.Log("Plugin is disabled.", Level.General);
