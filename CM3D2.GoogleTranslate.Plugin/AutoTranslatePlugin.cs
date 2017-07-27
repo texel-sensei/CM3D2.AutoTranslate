@@ -216,17 +216,24 @@ namespace CM3D2.AutoTranslate.Plugin
 				}
 				else
 				{
-					_translationCache[parts[0]] = new TranslationData()
+				    if (_translationCache.ContainsKey(parts[0]))
+				    {
+				        Logger.Log($"Line {lineNr} contains a duplicate translation!", Level.Warn);
+				    }
+				    var orig = parts[0];
+				    var transl = parts[1];
+					_translationCache[orig] = new TranslationData()
 					{
-						OriginalText = parts[0],
-						ProcessedText = parts[0],
-						Translation = parts[1],
+						OriginalText = orig,
+						ProcessedText = orig,
+						Translation = transl,
 						State = TranslationState.Finished,
 						SavedOnDisk = true
 					};
 				}
 				lineNr++;
 			}
+            Logger.Log($"Loaded {_translationCache.Count} translations from cache ({lineNr-1} lines).", Level.Info);
 		}
 
 		private IEnumerable<TranslationData> GetUnsavedTranslations()
@@ -306,7 +313,10 @@ namespace CM3D2.AutoTranslate.Plugin
 
 			var lab = sender as UILabel;
 			TranslationData translation;
-			if (_translationCache.TryGetValue(text, out translation))
+
+		    var searchtext = text.Replace("\n", "");
+
+			if (_translationCache.TryGetValue(searchtext, out translation))
 			{
 				Logger.Log("\tFound translation in cache.", Level.Verbose);
 				switch (translation.State)
