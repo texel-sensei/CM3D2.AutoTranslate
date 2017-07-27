@@ -3,6 +3,7 @@ using System.Collections;
 using System.Collections.Generic;
 using System.IO;
 using System.Reflection;
+using System.Security.Cryptography;
 using UnityEngine;
 using UnityInjector;
 using UnityInjector.Attributes;
@@ -11,7 +12,7 @@ namespace CM3D2.AutoTranslate.Plugin
 {
 
 	[PluginName(CoreUtil.PLUGIN_NAME)]
-	[PluginVersion("1.2.2")]
+	[PluginVersion(CoreUtil.PLUGIN_VERSION)]
 	public class AutoTranslatePlugin : PluginBase
 	{
 
@@ -47,12 +48,12 @@ namespace CM3D2.AutoTranslate.Plugin
 
 		public void Awake()
 		{
-			Logger.Init(this.DataPath);
+			Logger.Init(this.DataPath, Preferences);
 			try
 			{
 				DontDestroyOnLoad(this);
 				LoadConfig();
-				Logger.Log("Starting Plugin", Level.General);
+				Logger.Log($"Starting {CoreUtil.PLUGIN_NAME} v{CoreUtil.PLUGIN_VERSION}", Level.General);
 				if (!_pluginActive)
 				{
 					Logger.Log("Plugin is disabled.", Level.General);
@@ -215,17 +216,24 @@ namespace CM3D2.AutoTranslate.Plugin
 				}
 				else
 				{
-					_translationCache[parts[0]] = new TranslationData()
+				    if (_translationCache.ContainsKey(parts[0]))
+				    {
+				        Logger.Log($"Line {lineNr} contains a duplicate translation!", Level.Warn);
+				    }
+				    var orig = parts[0];
+				    var transl = parts[1];
+					_translationCache[orig] = new TranslationData()
 					{
-						OriginalText = parts[0],
-						ProcessedText = parts[0],
-						Translation = parts[1],
+						OriginalText = orig,
+						ProcessedText = orig,
+						Translation = transl,
 						State = TranslationState.Finished,
 						SavedOnDisk = true
 					};
 				}
 				lineNr++;
 			}
+            Logger.Log($"Loaded {_translationCache.Count} translations from cache ({lineNr-1} lines).", Level.Info);
 		}
 
 		private IEnumerable<TranslationData> GetUnsavedTranslations()
@@ -285,6 +293,7 @@ namespace CM3D2.AutoTranslate.Plugin
 				return text;
 			}
 
+            Logger.Log($"Trying {HookHelper.TranslationPlugin}", Level.Verbose);
 			var str = HookHelper.CallOriginalTranslator(sender, eventArgs);
 			if (str != null)
 			{
@@ -297,14 +306,17 @@ namespace CM3D2.AutoTranslate.Plugin
 			}
 			else
 			{
-				Logger.Log("\tFound no translation for: " + text, Level.Verbose);
+				Logger.Log("\tOriginal Plugin has no translation: " + text, Level.Verbose);
 			}
 
 			if (!_doTranslations) return null;
 
 			var lab = sender as UILabel;
 			TranslationData translation;
-			if (_translationCache.TryGetValue(text, out translation))
+
+		    var searchtext = text.Replace("\n", "");
+
+			if (_translationCache.TryGetValue(searchtext, out translation))
 			{
 				Logger.Log("\tFound translation in cache.", Level.Verbose);
 				switch (translation.State)
@@ -373,7 +385,11 @@ namespace CM3D2.AutoTranslate.Plugin
 
 		private void CacheTranslation(TranslationData result)
 		{
-			if (result.State != TranslationState.Finished) return;
+		    if (result.State != TranslationState.Finished)
+		    {
+                Logger.Log($"Trying to cache unfinised translation #{result.Id}!", Level.Warn);
+		        return;
+		    }
 
 			_translationCache[result.OriginalText] = result;
 

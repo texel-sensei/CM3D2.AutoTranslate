@@ -12,6 +12,7 @@ namespace CM3D2.AutoTranslate.Plugin
 	internal static class CoreUtil
 	{
 		public const string PLUGIN_NAME = "AutoTranslate";
+	    public const string PLUGIN_VERSION = "1.2.3";
 		private static ExIni.IniFile _preferences;
 		private static Dictionary<string,Dictionary<string, string>> _defaultValues = new Dictionary<string, Dictionary<string, string>>();
 		private static bool _needSaveConfig = false;

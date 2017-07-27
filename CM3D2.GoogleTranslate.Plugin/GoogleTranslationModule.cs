@@ -32,11 +32,19 @@ namespace CM3D2.AutoTranslate.Plugin
 			try
 			{
 				cd.Check();
-				Logger.Log("Google seems OK", Level.Debug);
-			}
+			    if (dat.State == TranslationState.Finished)
+			    {
+			        Logger.Log("Google seems OK", Level.Debug);
+			    }
+			    else
+			    {
+			        Logger.Log("There seems to be a problem with Google!", Level.Warn);
+			    }
+            }
 			catch (Exception e)
 			{
-				Logger.Log(e);
+			    Logger.Log("There seems to be a problem with Google!", Level.Warn);
+                Logger.Log(e);
 			}
 		}
 
