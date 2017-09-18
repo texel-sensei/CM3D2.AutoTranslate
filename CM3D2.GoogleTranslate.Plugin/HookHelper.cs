@@ -1,28 +1,31 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Linq.Expressions;
 using System.Reflection;
 using System.Text;
+using CM3D2.AutoTranslate.Plugin.Hooks;
+using UnityEngine;
+using Object = UnityEngine.Object;
 
 namespace CM3D2.AutoTranslate.Plugin
 {
 	internal static class HookHelper
 	{
-		public enum ParentTranslationPlugin
+	    
+        public enum ParentTranslationPlugin
 		{
 			None,
 			UnifiedTranslationLoader,
-			TranslationPlus
+			TranslationPlus,
+			YetAnotherTranslator
 		}
 
 		private class PluginHookInfo
 		{
 			public string AssemblyID;
-			public string HookClassName;
-			public string OriginalMethodName;
 			public string EventName;
-			public string PluginClassName;
-			public string HookHint;
+		    public string HandlerModuleName;
 		}
 
 		private static Dictionary<ParentTranslationPlugin, PluginHookInfo> _pluginHookInfos = new Dictionary<ParentTranslationPlugin, PluginHookInfo>()
@@ -30,35 +33,35 @@ namespace CM3D2.AutoTranslate.Plugin
 			{ParentTranslationPlugin.TranslationPlus, new PluginHookInfo()
 			{
 				AssemblyID =  ".TranslationPlus.",
-				HookClassName = "CM3D2.TranslationPlus.Hook.TranslationPlusHooks",
-				PluginClassName = "CM3D2.TranslationPlus.Plugin.TranslationPlus",
-				OriginalMethodName = "OnTranslateString",
 				EventName = "TranslateText",
-				HookHint =  "Hook"
+                HandlerModuleName = "TranslationPlusHook"
 			} },
 			{ParentTranslationPlugin.UnifiedTranslationLoader, new PluginHookInfo()
 			{
 				AssemblyID = ".Translation",
-				HookClassName = "CM3D2.Translation.Core",
-				PluginClassName = "CM3D2.Translation.Plugin.TranslationPlugin",
-				OriginalMethodName = "OnTranslateString",
 				EventName = "TranslateText",
-				HookHint = "CM3D2.Translation,"
-			} }
+			    HandlerModuleName = "UTLHook"
+            } },
+			{ParentTranslationPlugin.YetAnotherTranslator, new PluginHookInfo()
+			{
+				AssemblyID = ".YATranslator",
+				EventName = "TranslateText",
+			    HandlerModuleName = "YATHook"
+            } }
 		};
 
 		private class Hook
 		{
-			public PluginHookInfo Info;
-			public MethodInfo originalTranslationMethod;
-			public UnityEngine.Object Plugin;
+			public PluginHookInfo Info;	
+		    public TranslationPluginHook PluginHandler;
+            public UnityEngine.MonoBehaviour Plugin;
 		}
 
-		public static ParentTranslationPlugin TranslationPlugin { get; private set; } = ParentTranslationPlugin.None;
+
+        public static ParentTranslationPlugin TranslationPlugin { get; private set; } = ParentTranslationPlugin.None;
 		private static readonly Hook _hook = new Hook();
 
-
-		public static void DetectTranslationPlugin()
+		public static ParentTranslationPlugin DetectTranslationPlugin()
 		{
 			var assemblies = AppDomain.CurrentDomain.GetAssemblies();
 			var longestId = 0;
@@ -85,73 +88,72 @@ namespace CM3D2.AutoTranslate.Plugin
 					}
 				}
 			}
+		    return TranslationPlugin;
 		}
 
-		private static Type FindType(PluginHookInfo info, string extra, bool loadHook)
+	    public delegate string TranslationDelegate(object sender, object args);
+
+		public static bool HookTranslationEvent(AutoTranslatePlugin atp)
 		{
-			var name = loadHook ? info.HookClassName : info.PluginClassName;
+		    try
+		    {
+		        var curAssembly = Assembly.GetAssembly(typeof(TranslationPluginHook));
+		        var namespace_ = "CM3D2.AutoTranslate.Plugin.Hooks";
+		        var hookType = curAssembly.GetType(
+		            namespace_ + "." + _hook.Info.HandlerModuleName
+		        );
 
-			Logger.Log($"Looking for {name} in {info.AssemblyID}, {extra}", Level.Debug);
+		        var handler =  Activator.CreateInstance(hookType, new object[]{atp}) as TranslationPluginHook;
+		        if (handler == null)
+		            return false;
 
-			var assemblies = AppDomain.CurrentDomain.GetAssemblies();
-			foreach (var assembly in assemblies)
-			{
-				var assemblyName = assembly.GetName();
-				Logger.Log($"Checking {assemblyName}", Level.Verbose);
-				if (!assemblyName.FullName.Contains(info.AssemblyID) || !assemblyName.FullName.Contains(extra)) continue;
+		        _hook.PluginHandler = handler;
+		        _hook.Plugin = Object.FindObjectOfType(handler.PluginType) as MonoBehaviour;
 
-				Logger.Log($"Found it in {assemblyName.Name}");
-				return assembly.GetType(name);
-			}
-			throw new TypeLoadException("Couldn't find Assembly!");
+		        if (_hook.Plugin == null)
+		        {
+		            Logger.LogError($"Couldn't find {TranslationPlugin} Plugin!");
+		        }
+
+                handler.RegisterHook(_hook.Plugin);
+
+		        return true;
+		    }
+		    catch (Exception e)
+		    {
+		        Logger.LogError("Got Exception while hooking!", e);
+		        return false;
+		    }
 		}
 
-		public static void HookTranslationEvent(object sender, MethodInfo methodInfo)
+        /*
+         *  This function removes all registered delegates from the event, except for 
+         *  our own delegate
+         */
+        private static void RemoveExisingHandlers(
+            PluginHookInfo info, Type type, EventInfo eventInfo, Delegate ownHandler
+        ){
+            var fieldInfo = type.GetField(info.EventName, BindingFlags.NonPublic | BindingFlags.Static);
+            var del = fieldInfo.GetValue(null) as Delegate;
+            foreach (var h in del.GetInvocationList())
+            {
+                if (h == ownHandler)
+                    continue;
+                eventInfo.RemoveEventHandler(null, h);
+            }
+        }
+
+        public static string CallOriginalTranslator(object sender, object message)
 		{
-			var info = _hook.Info;
-
-			// Load Event
-			var type = FindType(info, info.HookHint, true);
-			var eventInfo = type.GetEvent(info.EventName);
-
-			// Remove all existing event handlers
-			var fieldInfo = type.GetField(info.EventName, BindingFlags.NonPublic | BindingFlags.Static);
-			var del = fieldInfo.GetValue(null) as Delegate;
-			foreach (var h in del.GetInvocationList())
-			{
-				eventInfo.RemoveEventHandler(null, h);
-			}
-
-			//eventInfo.RemoveEventHandler(null, del);
-
-			// Create and add delegate for own handler
-			var handler = Delegate.CreateDelegate(eventInfo.EventHandlerType, sender, methodInfo);
-			eventInfo.AddEventHandler(null, handler);
-
-			// find original translation method
-			var pluginType = FindType(info, "Plugin", false);
-			_hook.originalTranslationMethod = pluginType.GetMethod(info.OriginalMethodName,
-				BindingFlags.Instance | BindingFlags.NonPublic);
-
-			//var oldHandler = Delegate.CreateDelegate(eventInfo.EventHandlerType, sender, _hook.originalTranslationMethod);
-			//eventInfo.RemoveEventHandler(null, oldHandler);
-
-			_hook.Plugin = UnityEngine.Object.FindObjectOfType(pluginType);
-			if (_hook.Plugin == null)
-			{
-				Logger.LogError("Failed to find PluginObject!");	
-			}
-		}
-
-		public static string CallOriginalTranslator(object sender, object message)
-		{
-			var res = _hook.originalTranslationMethod.Invoke(_hook.Plugin, new[] {sender, message});
-			return res as string;
+			//var res = _hook.originalTranslationMethod.Invoke(_hook.Plugin, new[] {sender, message});
+			//return res as string;
+		    return null;
 		}
 
 		public static string GetTextFromEvent(object eventArgs)
 		{
-			return eventArgs.GetType().GetProperty("Text").GetValue(eventArgs, null) as string;
+		    return null;
 		}
+
 	}
 }

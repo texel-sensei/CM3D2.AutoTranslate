@@ -27,20 +27,21 @@ namespace CM3D2.AutoTranslate.Plugin
 			Instant
 		}
 
-		private string _translationFile = "google_translated.txt";
-		private string _translationFolder = "Translation";
-		private bool _dumpCache = true;
 		private bool _pluginActive = true;
-		private string _activeTranslator = "Google";
-		private CacheDumpFrequenzy _cacheDumpFrequenzy = CacheDumpFrequenzy.OnQuit;
-		private int _cacheDumpPeriodicIntervall = 10;
+		private bool _doTranslations = true;
+		private bool _dumpCache = true;
 		private string _toggleButton = "f10";
 
+		private string _translationFile = "google_translated.txt";
+		private string _translationFolder = "Translation";
+		private string _activeTranslator = "Google";
+
+		private CacheDumpFrequenzy _cacheDumpFrequenzy = CacheDumpFrequenzy.OnQuit;
+		private int _cacheDumpPeriodicIntervall = 10;
 		private readonly Dictionary<string, TranslationData> _translationCache = new Dictionary<string, TranslationData>();
-		private readonly Dictionary<UILabel, int> _mostRecentTranslations = new Dictionary<UILabel, int>();
 		private int _unsavedTranslations = 0;
 
-		private bool _doTranslations = true;
+		private readonly Dictionary<UILabel, int> _mostRecentTranslations = new Dictionary<UILabel, int>();
 
 		internal TranslationModule Translator { get; set; }
 
@@ -84,8 +85,8 @@ namespace CM3D2.AutoTranslate.Plugin
 					SaveConfig();
 				}
 
-				HookHelper.DetectTranslationPlugin();
-				if (HookHelper.TranslationPlugin == HookHelper.ParentTranslationPlugin.None)
+				var translatorPlugin = HookHelper.DetectTranslationPlugin();
+				if (translatorPlugin == HookHelper.ParentTranslationPlugin.None)
 				{
 					Logger.LogError("Found neither Unified Translation Loader nor TranslationPlus! Make sure one of them is installed");
 					Destroy(this);
@@ -119,6 +120,7 @@ namespace CM3D2.AutoTranslate.Plugin
 			catch (Exception e)
 			{
 				Logger.LogError(e);
+                Destroy(this);
 			}
 		}
 
@@ -161,18 +163,22 @@ namespace CM3D2.AutoTranslate.Plugin
 			Logger.Log("Waiting for hook...",Level.Info);
 			yield return new WaitForEndOfFrame();
 
+		    var success = true;
+
 			try
 			{
-				var methodInfo = this.GetType().GetMethod("TextStreamHandleText",
-					BindingFlags.NonPublic | BindingFlags.Instance);
-				HookHelper.HookTranslationEvent(this, methodInfo);
+				success = HookHelper.HookTranslationEvent(this);
 			}
 			catch (Exception e)
 			{
-				Logger.LogError("Failed hook!",e);
-				Destroy(this);
-				yield break;
+				Logger.LogError("Exception while hooking:",e);
+			    success = false;
 			}
+		    if (!success)
+		    {
+		        Destroy(this);
+		        yield break;
+            }
 			Logger.Log("Hook successful!",Level.Info);	
 		}
 
@@ -280,18 +286,57 @@ namespace CM3D2.AutoTranslate.Plugin
 			return num / (float) check_len;
 		}
 
+	    public static bool should_translate_text(string text)
+	    {
+	        if (text == null || text.Trim().Length == 0)
+	            return false;
+	        return get_ascii_percentage(text) < 0.8;
+	    }
 
-		// This function is called via reflection
-		// ReSharper disable once UnusedMember.Local
-		private string TextStreamHandleText(object sender, object eventArgs)
+	    internal TranslationData BuildTranslationData(string text, MonoBehaviour display)
+	    {
+	        var searchtext = text.Replace("\n", "");
+
+	        if (_translationCache.TryGetValue(searchtext, out var translation))
+	        {
+	            Logger.Log("\tFound translation in cache.", Level.Verbose);
+	            switch (translation.State)
+	            {
+	                case TranslationState.Finished:
+	                    return translation;
+	                case TranslationState.InProgress:
+	                    Logger.Log("\tTranslation is still in progress.", Level.Debug);
+	                    return translation;
+                    case TranslationState.None:
+	                    Logger.Log("\tTranslation has state none!", Level.Warn);
+                        return translation;
+                    case TranslationState.Failed:
+	                    Logger.Log("\tTranslation failed before! Retrying...", Level.Warn);
+	                    break;
+	                default:
+	                    Logger.LogError("Invalid translation state!");
+	                    break;
+	            }
+	        }
+  
+	        translation = new TranslationData
+	        {
+	            Id = TranslationData.AllocateId(),
+	            ProcessedText = _preprocessor.Preprocess(text),
+	            OriginalText = text,
+	            State = TranslationState.InProgress,
+	            Label = display as UILabel
+	        };
+
+            return translation;
+	    }
+
+        // This function is called via reflection
+        // ReSharper disable once UnusedMember.Local
+        /*private string TextStreamHandleText(object sender, object eventArgs)
 		{
 			var text = HookHelper.GetTextFromEvent(eventArgs);
-			if (text == null || text.Trim().Length == 0)
-				return null;
-			if (get_ascii_percentage(text) > 0.8)
-			{
-				return text;
-			}
+			
 
             Logger.Log($"Trying {HookHelper.TranslationPlugin}", Level.Verbose);
 			var str = HookHelper.CallOriginalTranslator(sender, eventArgs);
@@ -312,50 +357,23 @@ namespace CM3D2.AutoTranslate.Plugin
 			if (!_doTranslations) return null;
 
 			var lab = sender as UILabel;
-			TranslationData translation;
-
-		    var searchtext = text.Replace("\n", "");
-
-			if (_translationCache.TryGetValue(searchtext, out translation))
-			{
-				Logger.Log("\tFound translation in cache.", Level.Verbose);
-				switch (translation.State)
-				{
-					case TranslationState.Finished:
-						return translation.Translation;
-					case TranslationState.InProgress:
-						Logger.Log("\tTranslation is still in progress.",Level.Debug);
-						return null;
-					case TranslationState.None:
-						Logger.Log("\tTranslation has state none!", Level.Warn);
-						return null;
-					case TranslationState.Failed:
-						Logger.Log("\tTranslation failed before! Retrying...", Level.Warn);
-						break;
-					default:
-						Logger.LogError("Invalid translation state!");
-						return null;
-				}
-			}
+			
 
 			StartCoroutine(DoTranslation(lab, text));
 			return text;
-		}
+		}*/
 
+	    internal void StartTranslation(TranslationData translation)
+	    {
+	        StartCoroutine(DoTranslation(translation));
+	    }
 
-		private IEnumerator DoTranslation(UILabel lab, string eText)
+        private IEnumerator DoTranslation(TranslationData result)
 		{
-			var result = new TranslationData
-			{
-				Id = TranslationData.AllocateId(),
-				ProcessedText = _preprocessor.Preprocess(eText),
-				OriginalText =  eText,
-				State = TranslationState.InProgress,
-				Label = lab
-			};
-
 			var id = result.Id;
 			Logger.Log($"Starting translation {id}!",Level.Debug);
+
+		    var lab = result.Label;
 
 			_mostRecentTranslations[lab] = id;
 
