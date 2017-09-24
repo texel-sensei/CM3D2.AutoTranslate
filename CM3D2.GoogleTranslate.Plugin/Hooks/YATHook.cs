@@ -47,6 +47,7 @@ namespace CM3D2.AutoTranslate.Plugin.Hooks
         
         public override void RegisterHook(MonoBehaviour plugin)
         {
+            Logger.Log("Registering YATranslator Hook", Level.Info);
             TranslationHooks.TranslateText += HandleText;
         }
     }

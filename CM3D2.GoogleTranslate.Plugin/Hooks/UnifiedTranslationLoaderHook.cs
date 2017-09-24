@@ -5,33 +5,32 @@ using System.Text;
 using UnityEngine;
 using System.Reflection;
 
-
-using CM3D2.TranslationPlus.Hook;
-using CM3D2.TranslationPlus.Plugin;
+using CM3D2.Translation;
 
 namespace CM3D2.AutoTranslate.Plugin.Hooks
 {
-    internal class TranslationPlusHook : TranslationPluginHook
+    internal class UnifiedTranslationLoaderHook : TranslationPluginHook
     {
-        // Can't have the subclass TranslationPlus.Plugin.TranslationPlus as a
-        // member or the loading of the Autotranslate dll fails
-        private MonoBehaviour _translationPlus;
+        public override Type PluginType => typeof(Translation.Plugin.TranslationPlugin);
 
-        public TranslationPlusHook(AutoTranslatePlugin atp) : base(atp)
+
+        // Can't have the subclass Translation.Plugin.TranslationPlugin as a
+        // member or the loading of the Autotranslate dll fails
+        private MonoBehaviour _unifiedTranslationLoader;
+
+        public UnifiedTranslationLoaderHook(AutoTranslatePlugin atp) : base(atp)
         {
         }
 
-        public override Type PluginType => typeof(TranslationPlus.Plugin.TranslationPlus);
-        
         private string CallOriginalTranslator(object sender, StringTranslationEventArgs e)
         {
-            var type = typeof(TranslationPlus.Plugin.TranslationPlus);
+            var type = typeof(Translation.Plugin.TranslationPlugin);
             var str = (string)
                 type.GetMethod(
                     "OnTranslateString",
                     BindingFlags.Instance | BindingFlags.NonPublic
                  ).Invoke(
-                    _translationPlus,
+                    _unifiedTranslationLoader,
                     new object[]{sender,e}
                 );
             return str;
@@ -66,12 +65,12 @@ namespace CM3D2.AutoTranslate.Plugin.Hooks
             TranslatePlugin.StartTranslation(trans);
             return null;
         }
-        
+
         public override void RegisterHook(MonoBehaviour plugin)
         {
-            Logger.Log("Registering Translation Plus Hook", Level.Info);
-            _translationPlus = plugin;
-            TranslationPlusHooks.TranslateText += HandleText;
+            Logger.Log("Registering Unified Translation Loader Hook", Level.Info);
+            _unifiedTranslationLoader = plugin as Translation.Plugin.TranslationPlugin;
+            Translation.Core.TranslateText += HandleText;
         }
     }
 }

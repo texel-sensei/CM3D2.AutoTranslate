@@ -42,6 +42,7 @@
     <Compile Include="GoogleTranslationModule.cs" />
     <Compile Include="HookHelper.cs" />
     <Compile Include="Hooks\ITranslationPluginHook.cs" />
+    <Compile Include="Hooks\UnifiedTranslationLoaderHook.cs" />
     <Compile Include="Hooks\TranslationPlusHook.cs" />
     <Compile Include="Hooks\YATHook.cs" />
     <Compile Include="Logger.cs" />
