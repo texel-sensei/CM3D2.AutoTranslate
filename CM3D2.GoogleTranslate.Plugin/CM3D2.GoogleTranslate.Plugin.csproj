@@ -24,13 +24,14 @@
     <Prefer32Bit>false</Prefer32Bit>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' ">
-    <DebugType>pdbonly</DebugType>
+    <DebugType>full</DebugType>
     <Optimize>true</Optimize>
     <OutputPath>bin\Release\</OutputPath>
-    <DefineConstants>TRACE</DefineConstants>
+    <DefineConstants>DEBUG;TRACE</DefineConstants>
     <ErrorReport>prompt</ErrorReport>
     <WarningLevel>4</WarningLevel>
     <Prefer32Bit>false</Prefer32Bit>
+    <DebugSymbols>true</DebugSymbols>
   </PropertyGroup>
   <ItemGroup>
     <Compile Include="AutoTranslatePlugin.cs" />
@@ -40,6 +41,10 @@
     <Compile Include="GenericServerTranslationModule.cs" />
     <Compile Include="GoogleTranslationModule.cs" />
     <Compile Include="HookHelper.cs" />
+    <Compile Include="Hooks\ITranslationPluginHook.cs" />
+    <Compile Include="Hooks\UnifiedTranslationLoaderHook.cs" />
+    <Compile Include="Hooks\TranslationPlusHook.cs" />
+    <Compile Include="Hooks\YATHook.cs" />
     <Compile Include="Logger.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="SimpleJSON.cs" />
@@ -64,6 +69,12 @@
     <Reference Include="CM3D2.TranslationPlus.Plugin">
       <HintPath>..\..\..\..\..\..\misc\tmp\Custom Maid 3D2\Game\CM3D2\Sybaris\Plugins\UnityInjector\CM3D2.TranslationPlus.Plugin.dll</HintPath>
     </Reference>
+    <Reference Include="CM3D2.YATranslator.Hook">
+      <HintPath>..\..\..\..\..\..\misc\tmp\Custom Maid 3D2\Game\CM3D2\Sybaris\translators\YAT\Managed\CM3D2.YATranslator.Hook.dll</HintPath>
+    </Reference>
+    <Reference Include="CM3D2.YATranslator.Plugin">
+      <HintPath>..\..\CM3D2.YATranslator.Plugin.dll</HintPath>
+    </Reference>
     <Reference Include="ExIni">
       <HintPath>..\..\..\..\..\..\misc\tmp\Custom Maid 3D2\Game\CM3D2\CM3D2VRx64_Data\Managed\ExIni.dll</HintPath>
     </Reference>
@@ -74,6 +85,10 @@
     <Reference Include="System" />
     <Reference Include="UnityEngine">
       <HintPath>..\..\..\..\..\..\misc\tmp\Custom Maid 3D2\Game\CM3D2\CM3D2VRx64_Data\Managed\UnityEngine.dll</HintPath>
+    </Reference>
+    <Reference Include="UnityEngine.UI, Version=1.0.0.0, Culture=neutral, processorArchitecture=MSIL">
+      <SpecificVersion>False</SpecificVersion>
+      <HintPath>..\..\..\..\..\..\misc\tmp\Custom Maid 3D2\Game\CM3D2\CM3D2x64_Data\Managed\UnityEngine.UI.dll</HintPath>
     </Reference>
     <Reference Include="UnityInjector">
       <HintPath>..\..\..\..\..\..\misc\tmp\Custom Maid 3D2\Game\CM3D2\CM3D2VRx64_Data\Managed\UnityInjector.dll</HintPath>
