@@ -75,9 +75,6 @@
     <Reference Include="CM3D2.YATranslator.Plugin">
       <HintPath>..\..\CM3D2.YATranslator.Plugin.dll</HintPath>
     </Reference>
-    <Reference Include="CM3D2.YATranslator.Sybaris.Patcher">
-      <HintPath>..\..\..\..\..\..\misc\tmp\Custom Maid 3D2\Game\CM3D2\Sybaris\translators\YAT\Loader\CM3D2.YATranslator.Sybaris.Patcher.dll</HintPath>
-    </Reference>
     <Reference Include="ExIni">
       <HintPath>..\..\..\..\..\..\misc\tmp\Custom Maid 3D2\Game\CM3D2\CM3D2VRx64_Data\Managed\ExIni.dll</HintPath>
     </Reference>
@@ -88,6 +85,10 @@
     <Reference Include="System" />
     <Reference Include="UnityEngine">
       <HintPath>..\..\..\..\..\..\misc\tmp\Custom Maid 3D2\Game\CM3D2\CM3D2VRx64_Data\Managed\UnityEngine.dll</HintPath>
+    </Reference>
+    <Reference Include="UnityEngine.UI, Version=1.0.0.0, Culture=neutral, processorArchitecture=MSIL">
+      <SpecificVersion>False</SpecificVersion>
+      <HintPath>..\..\..\..\..\..\misc\tmp\Custom Maid 3D2\Game\CM3D2\CM3D2x64_Data\Managed\UnityEngine.UI.dll</HintPath>
     </Reference>
     <Reference Include="UnityInjector">
       <HintPath>..\..\..\..\..\..\misc\tmp\Custom Maid 3D2\Game\CM3D2\CM3D2VRx64_Data\Managed\UnityInjector.dll</HintPath>

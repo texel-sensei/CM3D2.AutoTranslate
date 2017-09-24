@@ -23,7 +23,7 @@ namespace CM3D2.AutoTranslate.Plugin
 		public string OriginalText { get; set; }
 		public string Translation { get; set; }
 		public int Id { get; set; }
-		public UILabel Label { get; set; }
+		public MonoBehaviour Display { get; set; }
 		public bool SavedOnDisk { get; set; }
 		public TranslationState State { get; set; }
 

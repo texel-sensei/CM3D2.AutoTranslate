@@ -4,6 +4,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Text;
 using UnityEngine;
+using UnityEngine.UI;
 using UnityInjector;
 using UnityInjector.Attributes;
 
@@ -44,7 +45,7 @@ namespace CM3D2.AutoTranslate.Plugin
 		private readonly Dictionary<string, TranslationData> _translationCache = new Dictionary<string, TranslationData>();
 		private int _unsavedTranslations = 0;
 
-		private readonly Dictionary<UILabel, int> _mostRecentTranslations = new Dictionary<UILabel, int>();
+		private readonly Dictionary<MonoBehaviour, int> _mostRecentTranslations = new Dictionary<MonoBehaviour, int>();
 
         private readonly HashSet<int> _ignoredLevels = new HashSet<int>();
         private readonly HashSet<string> _ignoredInputs = new HashSet<string>();
@@ -403,7 +404,7 @@ namespace CM3D2.AutoTranslate.Plugin
 	            ProcessedText = _preprocessor.Preprocess(text),
 	            OriginalText = text,
 	            State = TranslationState.InProgress,
-	            Label = display as UILabel
+	            Display = display
 	        };
 
             return translation;
@@ -419,7 +420,7 @@ namespace CM3D2.AutoTranslate.Plugin
 			var id = result.Id;
 			Logger.Log($"Starting translation {id}!",Level.Debug);
 
-		    var lab = result.Label;
+		    var lab = result.Display;
 
 			_mostRecentTranslations[lab] = id;
 
@@ -436,18 +437,37 @@ namespace CM3D2.AutoTranslate.Plugin
 			}
 
 			if (_mostRecentTranslations[lab] == id)
-			{
-				lab.text = result.Translation;
-				lab.useFloatSpacing = false;
-				lab.spacingX = -1;
-			}
-			else
+            {
+                UpdateDisplay(result, lab);
+            }
+            else
 			{
 				Logger.Log("A newer translation request for this label exists.");
 			}
 		}
 
-		private void CacheTranslation(TranslationData result)
+        private static void UpdateDisplay(TranslationData result, MonoBehaviour display)
+        {
+            switch (display)
+            {
+                case UILabel lab:
+                    lab.text = result.Translation;
+                    lab.useFloatSpacing = false;
+                    lab.spacingX = -1;
+                    break;
+                case Text txt:
+                    txt.text = result.Translation;
+                    break;
+                default:
+                    Logger.Log(
+                        $"Translation for unsupported object {display.GetType().Name}"
+                        , Level.Warn
+                    );
+                    break;
+            }
+        }
+
+        private void CacheTranslation(TranslationData result)
 		{
 		    if (result.State != TranslationState.Finished)
 		    {
