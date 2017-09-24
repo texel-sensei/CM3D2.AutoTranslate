@@ -41,7 +41,7 @@ namespace CM3D2.AutoTranslate.Plugin.Hooks
         {
             var txt = e.Text;
             Logger.Log($"Text in '{txt}'", Level.Verbose);
-            if (!AutoTranslatePlugin.should_translate_text(txt))
+            if (!TranslatePlugin.ShouldTranslateText(txt))
             {
                 Logger.Log("Doesn't need translating, ignoring it!", Level.Verbose);
                 return txt;
@@ -50,7 +50,7 @@ namespace CM3D2.AutoTranslate.Plugin.Hooks
             var ft = CallOriginalTranslator(sender, e);
             if (
                 ft != null && ft.Trim().Length > 0 
-                && !AutoTranslatePlugin.should_translate_text(ft))
+                && AutoTranslatePlugin.IsAsciiText(ft))
             {
                 Logger.Log("Already translated by TP", Level.Verbose);
                 return ft;

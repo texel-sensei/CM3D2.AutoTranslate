@@ -2,8 +2,6 @@
 using System.Collections;
 using System.Collections.Generic;
 using System.IO;
-using System.Reflection;
-using System.Security.Cryptography;
 using System.Text;
 using UnityEngine;
 using UnityInjector;
@@ -37,16 +35,24 @@ namespace CM3D2.AutoTranslate.Plugin
 		private string _translationFolder = "Translation";
 		private string _activeTranslator = "Google";
 
-		private CacheDumpFrequenzy _cacheDumpFrequenzy = CacheDumpFrequenzy.OnQuit;
+	    private const string COMMENT_LINE_START = ";";
+	    private const string LEVEL_PREFIX = "$LEVEL";
+	    private string _IgnoreFileName = "AutoTranslateIgnore.txt";
+
+        private CacheDumpFrequenzy _cacheDumpFrequenzy = CacheDumpFrequenzy.OnQuit;
 		private int _cacheDumpPeriodicIntervall = 10;
 		private readonly Dictionary<string, TranslationData> _translationCache = new Dictionary<string, TranslationData>();
 		private int _unsavedTranslations = 0;
 
 		private readonly Dictionary<UILabel, int> _mostRecentTranslations = new Dictionary<UILabel, int>();
 
+        private readonly HashSet<int> _ignoredLevels = new HashSet<int>();
+        private readonly HashSet<string> _ignoredInputs = new HashSet<string>();
+	    private bool _translationDisabledForLevel = false;
+
 		internal TranslationModule Translator { get; set; }
 
-		private TextPreprocessor _preprocessor = new TextPreprocessor();
+		private readonly TextPreprocessor _preprocessor = new TextPreprocessor();
 
 		public void Awake()
 		{
@@ -85,6 +91,8 @@ namespace CM3D2.AutoTranslate.Plugin
 				{
 					SaveConfig();
 				}
+
+                LoadIgnores();
 
 				var translatorPlugin = HookHelper.DetectTranslationPlugin();
 				if (translatorPlugin == HookHelper.ParentTranslationPlugin.None)
@@ -134,7 +142,12 @@ namespace CM3D2.AutoTranslate.Plugin
 		{
 			if (Input.GetKeyDown(_toggleButton))
 			{
-				_doTranslations = !_doTranslations;
+			    if (_translationDisabledForLevel)
+			    {
+			        Logger.Log("Overriding translation ignore for current level!", Level.Warn);
+			        _translationDisabledForLevel = false;
+			    }
+                _doTranslations = !_doTranslations;
 				Logger.Log("Translations are " + (_doTranslations ? "enabled" : "disabled"), Level.General);
 			}
 		}
@@ -150,7 +163,21 @@ namespace CM3D2.AutoTranslate.Plugin
 			return true;
 		}
 
-		private IEnumerator PeriodicDumpCache()
+	    public void OnLevelWasLoaded(int level)
+	    {
+            Logger.Log($"Entering level {level}", Level.Debug);
+	        if (_ignoredLevels.Contains(level))
+	        {
+	            _translationDisabledForLevel = true;
+	            Logger.Log($"Disabling AutoTranslate for level {level}", Level.General);
+	        }
+	        else
+	        {
+	            _translationDisabledForLevel = false;
+            }
+        }
+
+        private IEnumerator PeriodicDumpCache()
 		{
 			while (true)
 			{
@@ -266,6 +293,7 @@ namespace CM3D2.AutoTranslate.Plugin
 			general.LoadValue("PluginActive", ref _pluginActive);
 			general.LoadValue("ToggleTranslationKey", ref _toggleButton);
 			general.LoadValue("TranslationMethod", ref _activeTranslator);
+            general.LoadValue("IgnoreFileName", ref _IgnoreFileName);
 
 			var cache = CoreUtil.LoadSection("Cache");
 			cache.LoadValue("File", ref _translationFile);
@@ -277,7 +305,40 @@ namespace CM3D2.AutoTranslate.Plugin
 			}
 		}
 
-		private static float get_ascii_percentage(string str)
+	    private void LoadIgnores()
+	    {
+	        string filePath = Path.Combine(DataPath, _IgnoreFileName);
+
+	        Logger.Log("Reading ignore file", Level.Info);
+
+	        if (!File.Exists(filePath))
+	        {
+	            using (var sw = File.CreateText(filePath))
+	                sw.WriteLine();
+	            return;
+	        }
+
+	        foreach (var line in File.ReadAllLines(filePath))
+	        {
+	            var l = line.Trim();
+	            if (l.StartsWith(COMMENT_LINE_START))
+	                continue;
+	            if (l.Length == 0)
+	                continue;
+	            if (l.StartsWith(LEVEL_PREFIX))
+	            {
+	                if (int.TryParse(l.Substring(LEVEL_PREFIX.Length), out int level)) { 
+                        Logger.Log($"Ignoring text in level {level}", Level.Info);
+	                    _ignoredLevels.Add(level);
+	                }
+                    continue;
+	            }
+	            Logger.Log($"Ignoring input text '{line}'", Level.Info);
+                _ignoredInputs.Add(line);
+	        }
+	    }
+
+        private static float get_ascii_percentage(string str)
 		{
 			int num = 0;
 			int check_len = 0;
@@ -292,11 +353,22 @@ namespace CM3D2.AutoTranslate.Plugin
 			return num / (float) check_len;
 		}
 
-	    public static bool should_translate_text(string text)
+	    public static bool IsAsciiText(string txt)
 	    {
+	        return get_ascii_percentage(txt) > 0.8;
+	    }
+
+	    public bool ShouldTranslateText(string text)
+	    {
+	        if (_translationDisabledForLevel) return false;
+	        if (!_doTranslations) return false;
+
+	        if (_ignoredInputs.Contains(text))
+	            return false;
+
 	        if (text == null || text.Trim().Length == 0)
 	            return false;
-	        return get_ascii_percentage(text) < 0.8;
+	        return !IsAsciiText(text);
 	    }
 
 	    internal TranslationData BuildTranslationData(string text, MonoBehaviour display)
@@ -336,38 +408,6 @@ namespace CM3D2.AutoTranslate.Plugin
 
             return translation;
 	    }
-
-        // This function is called via reflection
-        // ReSharper disable once UnusedMember.Local
-        /*private string TextStreamHandleText(object sender, object eventArgs)
-		{
-			var text = HookHelper.GetTextFromEvent(eventArgs);
-			
-
-            Logger.Log($"Trying {HookHelper.TranslationPlugin}", Level.Verbose);
-			var str = HookHelper.CallOriginalTranslator(sender, eventArgs);
-			if (str != null)
-			{
-				Logger.Log($"Got existing Translation from plugin '{str}'", Level.Verbose);
-				if (get_ascii_percentage(str) > 0.5)
-				{
-					return str;
-				}
-				Logger.Log("Translation from TranslationLoader is not translated!", Level.Warn);
-			}
-			else
-			{
-				Logger.Log("\tOriginal Plugin has no translation: " + text, Level.Verbose);
-			}
-
-			if (!_doTranslations) return null;
-
-			var lab = sender as UILabel;
-			
-
-			StartCoroutine(DoTranslation(lab, text));
-			return text;
-		}*/
 
 	    internal void StartTranslation(TranslationData translation)
 	    {

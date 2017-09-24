@@ -30,7 +30,7 @@ namespace CM3D2.AutoTranslate.Plugin.Hooks
             }
 
 
-            if (!AutoTranslatePlugin.should_translate_text(text))
+            if (!TranslatePlugin.ShouldTranslateText(text))
             {
                 return;
             }
