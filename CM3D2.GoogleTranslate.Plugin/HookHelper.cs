@@ -28,7 +28,7 @@ namespace CM3D2.AutoTranslate.Plugin
 		    public string HandlerModuleName;
 		}
 
-		private static Dictionary<ParentTranslationPlugin, PluginHookInfo> _pluginHookInfos = new Dictionary<ParentTranslationPlugin, PluginHookInfo>()
+		private static readonly Dictionary<ParentTranslationPlugin, PluginHookInfo> _pluginHookInfos = new Dictionary<ParentTranslationPlugin, PluginHookInfo>()
 		{
 			{ParentTranslationPlugin.TranslationPlus, new PluginHookInfo()
 			{
@@ -91,8 +91,6 @@ namespace CM3D2.AutoTranslate.Plugin
 		    return TranslationPlugin;
 		}
 
-	    public delegate string TranslationDelegate(object sender, object args);
-
 		public static bool HookTranslationEvent(AutoTranslatePlugin atp)
 		{
 		    try
@@ -131,29 +129,14 @@ namespace CM3D2.AutoTranslate.Plugin
          *  our own delegate
          */
         private static void RemoveExisingHandlers(
-            PluginHookInfo info, Type type, EventInfo eventInfo, Delegate ownHandler
+            PluginHookInfo info, Type type, EventInfo eventInfo
         ){
             var fieldInfo = type.GetField(info.EventName, BindingFlags.NonPublic | BindingFlags.Static);
             var del = fieldInfo.GetValue(null) as Delegate;
             foreach (var h in del.GetInvocationList())
             {
-                if (h == ownHandler)
-                    continue;
                 eventInfo.RemoveEventHandler(null, h);
             }
         }
-
-        public static string CallOriginalTranslator(object sender, object message)
-		{
-			//var res = _hook.originalTranslationMethod.Invoke(_hook.Plugin, new[] {sender, message});
-			//return res as string;
-		    return null;
-		}
-
-		public static string GetTextFromEvent(object eventArgs)
-		{
-		    return null;
-		}
-
 	}
 }

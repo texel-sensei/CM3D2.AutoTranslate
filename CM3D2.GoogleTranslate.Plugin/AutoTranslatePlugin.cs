@@ -4,6 +4,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Reflection;
 using System.Security.Cryptography;
+using System.Text;
 using UnityEngine;
 using UnityInjector;
 using UnityInjector.Attributes;
@@ -88,7 +89,12 @@ namespace CM3D2.AutoTranslate.Plugin
 				var translatorPlugin = HookHelper.DetectTranslationPlugin();
 				if (translatorPlugin == HookHelper.ParentTranslationPlugin.None)
 				{
-					Logger.LogError("Found neither Unified Translation Loader nor TranslationPlus! Make sure one of them is installed");
+				    var bldr = new StringBuilder("Found none of the supported translation plugins!\n");
+				    bldr.AppendLine("Make sure, that one of the following is installed:");
+				    bldr.AppendLine(" - Yet Another Translator (recommended)");
+                    bldr.AppendLine(" - Unified Translation loader (only for ReiPatcher)");
+				    bldr.AppendLine(" - Translation Plus (only for Sybaris)");
+                    Logger.LogError(bldr.ToString());
 					Destroy(this);
 					return;
 				}
