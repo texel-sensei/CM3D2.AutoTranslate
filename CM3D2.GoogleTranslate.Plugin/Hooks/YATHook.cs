@@ -19,19 +19,27 @@ namespace CM3D2.AutoTranslate.Plugin.Hooks
         private void HandleText(object sender, StringTranslationEventArgs args)
         {
             var text = args.Text;
+            Logger.Log($"Text in {text}", Level.Verbose);
             if (args.Translation != null && args.Translation != text)
             {
-                return;
+                if (!TranslatePlugin.ShouldTranslateText(args.Translation))
+                {
+                    Logger.Log($"Already translated '{args.Translation}'", Level.Verbose);
+                    return;
+                }
+                text = args.Translation;
             }
 
             if (args.TextContainer == null)
             {
+                Logger.Log("No container");
                 return;
             }
 
 
             if (!TranslatePlugin.ShouldTranslateText(text))
             {
+                Logger.Log("Text doesn't need translating", Level.Verbose);
                 return;
             }
 
