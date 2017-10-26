@@ -47,6 +47,7 @@ namespace CM3D2.AutoTranslate.Plugin.Hooks
 
             if (translation.State == TranslationState.Finished)
             {
+                args.Translation = translation.Translation;
                 return;
             }
 
