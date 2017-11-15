@@ -40,7 +40,7 @@ namespace CM3D2.AutoTranslate.Plugin
 			{
 				AssemblyID = ".Translation",
 				EventName = "TranslateText",
-			    HandlerModuleName = "UTLHook"
+			    HandlerModuleName = "UnifiedTranslationLoaderHook"
             } },
 			{ParentTranslationPlugin.YetAnotherTranslator, new PluginHookInfo()
 			{
@@ -97,9 +97,16 @@ namespace CM3D2.AutoTranslate.Plugin
 		    {
 		        var curAssembly = Assembly.GetAssembly(typeof(TranslationPluginHook));
 		        var namespace_ = "CM3D2.AutoTranslate.Plugin.Hooks";
-		        var hookType = curAssembly.GetType(
-		            namespace_ + "." + _hook.Info.HandlerModuleName
+		        var hookName = namespace_ + "." + _hook.Info.HandlerModuleName;
+                var hookType = curAssembly.GetType(
+		            hookName
 		        );
+
+		        if (hookType == null)
+		        {
+		            Logger.LogError($"Failed to get hook loader type '{hookName}'. This is a bug, aborting plugin!");
+		            return false;
+		        }
 
 		        var handler =  Activator.CreateInstance(hookType, new object[]{atp}) as TranslationPluginHook;
 		        if (handler == null)
