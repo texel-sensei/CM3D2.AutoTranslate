@@ -102,7 +102,11 @@ namespace CM3D2.AutoTranslate.Plugin
 		            hookName
 		        );
 
-		        if (hookType == null)
+                // System.Type has a overloaded operator==
+                // Somehow this operator can't be loaded, it throws a MissingMethod exception ingame
+                // Because it's just a check for null, a cast to object works and
+                // prevents calling the overloaded operator
+		        if ((object)hookType == null)
 		        {
 		            Logger.LogError($"Failed to get hook loader type '{hookName}'. This is a bug, aborting plugin!");
 		            return false;
