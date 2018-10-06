@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
@@ -8,141 +8,134 @@ using UnityEngine;
 
 namespace CM3D2.AutoTranslate.Plugin
 {
-	internal class GoogleTranslationModule : TranslationModule
-	{
-		public override string Section => "Google";
-		private string _targetLanguage = "en";
+    [Serializable]
+    public class trans
+    {
+        public string q;
+        public string source;
+        public string target;
+        public string format;
+    }
 
-		public override bool Init()
-		{
-			// Do Nothing
-			StartCoroutine(Test());
-			return true;
-		}
+    internal class GoogleTranslationModule : TranslationModule
+    {
+        public override string Section => "Google";
+        private string _targetLanguage = "en";
+        private string _apiKey = "";
 
-		private IEnumerator Test()
-		{
-			var dat = new TranslationData()
-			{
-				Id = 0,
-				ProcessedText = "Hallo Welt"
-			};
-			var cd = CreateCoroutineEx(TranslateGoogle(dat.ProcessedText, "de", "en", dat));
-			yield return cd.coroutine;
-			try
-			{
-				cd.Check();
-			    if (dat.State == TranslationState.Finished)
-			    {
-			        Logger.Log("Google seems OK", Level.Debug);
-			    }
-			    else
-			    {
-			        Logger.Log("There seems to be a problem with Google!", Level.Warn);
-			    }
+        public override bool Init()
+        {
+            // Do Nothing
+            StartCoroutine(Test());
+            return true;
+        }
+
+        private IEnumerator Test()
+        {
+            var dat = new TranslationData()
+            {
+                Id = 0,
+                ProcessedText = "Hallo Welt"
+            };
+            var cd = CreateCoroutineEx(TranslateGoogle(dat.ProcessedText, "de", "en", dat));
+            yield return cd.coroutine;
+            try
+            {
+                cd.Check();
+                if (dat.State == TranslationState.Finished)
+                {
+                    Logger.Log("Google seems OK", Level.Debug);
+                }
+                else
+                {
+                    Logger.Log("There seems to be a problem with Google!", Level.Warn);
+                }
             }
-			catch (Exception e)
-			{
-			    Logger.Log("There seems to be a problem with Google!", Level.Warn);
+            catch (Exception e)
+            {
+                Logger.Log("There seems to be a problem with Google!", Level.Warn);
                 Logger.Log(e);
-			}
-		}
+            }
+        }
 
-		protected override void LoadConfig(CoreUtil.SectionLoader section)
-		{
-			section.LoadValue("TargetLanguage", ref _targetLanguage);
-		}
+        protected override void LoadConfig(CoreUtil.SectionLoader section)
+        {
+            section.LoadValue("TargetLanguage", ref _targetLanguage);
+            section.LoadValue("APIKey", ref _apiKey);
+        }
 
-		public override IEnumerator Translate(TranslationData data)
-		{
-			var cd = CreateCoroutineEx(TranslateGoogle(data.ProcessedText, "ja", _targetLanguage, data));
-			yield return cd.coroutine;
-			if (cd.GetException() != null)
-			{
-				Logger.LogException(cd.GetException(), Level.Warn);
-				data.State = TranslationState.Failed;
-			}
-		}
+        public override IEnumerator Translate(TranslationData data)
+        {
+            var cd = CreateCoroutineEx(TranslateGoogle(data.ProcessedText, "ja", _targetLanguage, data));
+            yield return cd.coroutine;
+            if (cd.GetException() != null)
+            {
+                Logger.LogException(cd.GetException(), Level.Warn);
+                data.State = TranslationState.Failed;
+            }
+        }
 
-		public override void DeInit()
-		{
-			// Do Nothing
-		}
+        public override void DeInit()
+        {
+            // Do Nothing
+        }
 
-		private static string ExtractTranslationFromGoogleString(string input)
-		{
-			var data = JSON.Parse(input);
-			var lineBuilder = new StringBuilder(input.Length);
-			foreach (JSONNode entry in data.AsArray[0].AsArray)
-			{
-				var token = entry.AsArray[0].ToString();
+        private static string ExtractTranslationFromGoogleString(string input)
+        {
+            var data = JSON.Parse(input);
+            var translatedText = data["data"]["translations"][0]["translatedText"];
+            return translatedText;
+        }
 
-				if (lineBuilder.Length != 0) lineBuilder.Append(" ");
-				lineBuilder.Append(token.Substring(1, token.Length - 2));
-			}
+        private IEnumerator TranslateGoogle(string text, string fromCulture, string toCulture, TranslationData translation)
+        {
+            fromCulture = fromCulture.ToLower();
+            toCulture = toCulture.ToLower();
 
-			var text = lineBuilder.ToString();
-			var builder = new StringBuilder(text.Length);
-			for (var i = 0; i < text.Length; ++i)
-			{
-				if (text[i] == '\\')
-				{
-					// skip this and next token
-					if (text[i + 1] != '"')
-						i++;
-					continue;
-				}
-				if (text[i] == '"' && text[i - 1] != '\\')
-					break;
-				builder.Append(text[i]);
-			}
+            translation.ProcessedText = text;
+            translation.State = TranslationState.Failed;
 
-			return builder.ToString();
-		}
+            // normalize the culture in case something like en-us was passed 
+            // retrieve only en since Google doesn't support sub-locales
+            string[] tokens = fromCulture.Split('-');
+            if (tokens.Length > 1)
+                fromCulture = tokens[0];
 
-		private IEnumerator TranslateGoogle(string text, string fromCulture, string toCulture, TranslationData translation)
-		{
-			fromCulture = fromCulture.ToLower();
-			toCulture = toCulture.ToLower();
+            // normalize ToCulture
+            tokens = toCulture.Split('-');
+            if (tokens.Length > 1)
+                toCulture = tokens[0];
 
-			translation.ProcessedText = text;
-			translation.State = TranslationState.Failed;
+            trans tr = new trans();
+            tr.q = text;
+            tr.source = fromCulture;
+            tr.target = toCulture;
+            tr.format = "text";
 
-			// normalize the culture in case something like en-us was passed 
-			// retrieve only en since Google doesn't support sub-locales
-			string[] tokens = fromCulture.Split('-');
-			if (tokens.Length > 1)
-				fromCulture = tokens[0];
+            string transjson = JsonUtility.ToJson(tr);
+            var bytes = Encoding.UTF8.GetBytes(transjson);
 
-			// normalize ToCulture
-			tokens = toCulture.Split('-');
-			if (tokens.Length > 1)
-				toCulture = tokens[0];
+            string url = "https://translation.googleapis.com/language/translate/v2?key=" + _apiKey;
 
-			//string url =
-			//	$@"http://translate.google.com/translate_a/t?client=j&text={WWW.EscapeURL(text)}&hl=en&sl={fromCulture}&tl={toCulture}";
-
-			string url = $@"https://translate.googleapis.com/translate_a/single?client=gtx&sl={fromCulture}&tl={toCulture}&dt=t&q={WWW.EscapeURL(text)}";
-
-			var headers = new Dictionary<string, string> { { "User-Agent", "Mozilla/5.0" }, { "Accept-Charset", "UTF-8" } };
-			var www = new WWW(url, null, headers);
-			yield return www;
+            var headers = new Dictionary<string, string> { { "Content-Type", "application/json" } };
+            var www = new WWW(url, bytes, headers);
+            yield return www;
 
 
-			if (www.error != null)
-			{
-				Logger.LogError(www.error);
-				yield break;
-			}
+            if (www.error != null)
+            {
+                Logger.LogError(www.error);
+                yield break;
+            }
 
-			var result = ExtractTranslationFromGoogleString(www.text);
+            var result = ExtractTranslationFromGoogleString(www.text);
 
-			result = result.Replace("\\n", "");
+            result = result.Replace("\\n", "");
 
-			Logger.Log($"Got Translation from google: {result}", Level.Debug);
+            Logger.Log($"Got Translation from google: {result}", Level.Debug);
 
-			translation.Translation = result;
-			translation.State = TranslationState.Finished;
-		}
-	}
+            translation.Translation = result;
+            translation.State = TranslationState.Finished;
+        }
+    }
 }
