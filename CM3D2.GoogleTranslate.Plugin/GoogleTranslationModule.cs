@@ -117,7 +117,7 @@ namespace CM3D2.AutoTranslate.Plugin
 
             string url = "https://translation.googleapis.com/language/translate/v2?key=" + _apiKey;
 
-            var headers = new Dictionary<string, string> { { "User-Agent", "Mozilla/5.0" }, { "Accept-Charset", "UTF-8" } };
+            var headers = new Dictionary<string, string> { { "Content-Type", "application/json" } };
 			var www = new WWW(url, bytes, headers);
 			yield return www;
 
@@ -136,6 +136,6 @@ namespace CM3D2.AutoTranslate.Plugin
 
 			translation.Translation = result;
 			translation.State = TranslationState.Finished;
-		}
+        }
 	}
 }
